@@ -44,8 +44,8 @@ class CreditCardWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(
         setOf(
             DpSize(110.dp, 120.dp),  // SMALL: compacto ~2x2
-            DpSize(250.dp, 120.dp),  // MEDIUM: ~4x2
-            DpSize(250.dp, 240.dp)   // LARGE: ~4x4
+            DpSize(210.dp, 120.dp),  // MEDIUM: ~4x2
+            DpSize(210.dp, 210.dp)   // LARGE: ~4x4
         )
     )
 
@@ -74,8 +74,8 @@ class CreditCardWidget : GlanceAppWidget() {
             return
         }
 
-        val isSmall = size.width < 250.dp
-        val isLarge = size.height >= 240.dp
+        val isSmall = size.width < 210.dp
+        val isLarge = size.height >= 210.dp
         val launchIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -184,7 +184,7 @@ class CreditCardWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(72.dp)
                 .cornerRadius(14.dp)
                 .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
         ) {
@@ -194,7 +194,7 @@ class CreditCardWidget : GlanceAppWidget() {
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .defaultWeight()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Lado izquierdo: banco + nombre
@@ -316,10 +316,10 @@ class CreditCardWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .height(84.dp)
+                .height(120.dp)
                 .cornerRadius(16.dp)
                 .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
                 // Fila 1: banco + boton +
@@ -361,7 +361,7 @@ class CreditCardWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$${formatCurrency(data.totalSpent)}",
+                        text = "$${formatCurrency(data.totalDue)}",
                         style = TextStyle(
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
@@ -377,12 +377,13 @@ class CreditCardWidget : GlanceAppWidget() {
                         )
                     )
                 }
-                Spacer(GlanceModifier.height(5.dp))
+                Spacer(GlanceModifier.height(10.dp))
                 // Barra de progreso de saldo
                 CreditUsageProgressBar(
                     progress = data.progress,
                     modifier = GlanceModifier.fillMaxWidth().height(6.dp)
                 )
+                Spacer(GlanceModifier.height(10.dp))
                 Spacer(GlanceModifier.defaultWeight())
                 // Fila 3: nombre + badge fecha
                 Row(
@@ -455,29 +456,12 @@ class CreditCardWidget : GlanceAppWidget() {
             else              -> Color.White
         }
 
-        // Usamos una fila completa para la barra lo que permite que sea una sola entidad visual continua
-        Row(
-            modifier = modifier
-                .background(ColorProvider(Color.White.copy(alpha = 0.25f)))
-                .cornerRadius(3.dp)
-        ) {
-            if (progress > 0) {
-                Box(
-                    modifier = GlanceModifier
-                        .defaultWeight(progress)
-                        .fillMaxHeight()
-                        .background(ColorProvider(fillColor))
-                        .cornerRadius(3.dp)
-                ) {}
-            }
-            if (progress < 1f) {
-                Box(
-                    modifier = GlanceModifier
-                        .defaultWeight(1f - progress)
-                        .fillMaxHeight()
-                ) {}
-            }
-        }
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = modifier.cornerRadius(3.dp),
+            color = ColorProvider(fillColor),
+            backgroundColor = ColorProvider(Color.White.copy(alpha = 0.25f))
+        )
     }
 
     // ─── HELPERS ────────────────────────────────────────────────────────────
