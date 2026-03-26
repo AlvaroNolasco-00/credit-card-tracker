@@ -39,6 +39,20 @@ data class WidgetCardData(
     else 0f
 }
 
+data class WidgetIncomeData(
+    val totalIncome: Double,
+    val totalSpent: Double
+) {
+    val progress: Float = if (totalIncome > 0)
+        (totalSpent / totalIncome).toFloat().coerceIn(0f, 1f)
+    else 0f
+}
+
+data class WidgetUiState(
+    val cards: List<WidgetCardData>,
+    val income: WidgetIncomeData
+)
+
 class CreditCardWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Responsive(
@@ -60,16 +74,21 @@ class CreditCardWidget : GlanceAppWidget() {
             WidgetCardData(card, spent, dateInfo)
         }
 
+        val currentMonthYear = DateUtils.getCurrentMonthYear()
+        val monthlyIncome = db.incomeDao().getTotalIncomeForMonth(currentMonthYear).first() ?: 0.0
+        val totalSpentAllCards = cardDataList.sumOf { it.totalDue }
+        val incomeData = WidgetIncomeData(monthlyIncome, totalSpentAllCards)
+
         provideContent {
             GlanceTheme {
-                WidgetContent(cardDataList, LocalSize.current, context)
+                WidgetContent(WidgetUiState(cardDataList, incomeData), LocalSize.current, context)
             }
         }
     }
 
     @Composable
-    private fun WidgetContent(cards: List<WidgetCardData>, size: DpSize, context: Context) {
-        if (cards.isEmpty()) {
+    private fun WidgetContent(state: WidgetUiState, size: DpSize, context: Context) {
+        if (state.cards.isEmpty() && state.income.totalIncome == 0.0) {
             EmptyWidgetContent(context)
             return
         }
@@ -89,9 +108,9 @@ class CreditCardWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity(launchIntent))
         ) {
             when {
-                isSmall -> SmallLayout(cards, context)
-                isLarge -> LargeLayout(cards, context)
-                else -> MediumLayout(cards, context)
+                isSmall -> SmallLayout(state, context)
+                isLarge -> LargeLayout(state, context)
+                else -> MediumLayout(state, context)
             }
         }
     }
@@ -99,25 +118,34 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── SMALL LAYOUT ───────────────────────────────────────────────────────
 
     @Composable
-    private fun SmallLayout(cards: List<WidgetCardData>, context: Context) {
+    private fun SmallLayout(state: WidgetUiState, context: Context) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(bottom = 8.dp)
         ) {
-            Text(
-                text = "Tarjetas",
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = WidgetColors.textPrimary
+            // New Income Card for Small
+            IncomeSummaryMiniCard(state.income)
+
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Tarjetas",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = WidgetColors.textPrimary
+                    )
                 )
-            )
-            Spacer(GlanceModifier.height(8.dp))
-            LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-                items(cards, itemId = { it.card.id.toLong() }) { data ->
-                    Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 5.dp, horizontal = 8.dp)) {
-                        SmallCardRow(data)
+                Spacer(GlanceModifier.height(4.dp))
+                LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
+                    items(state.cards, itemId = { it.card.id.toLong() }) { data ->
+                        Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp)) {
+                            SmallCardRow(data)
+                        }
                     }
                 }
             }
@@ -161,13 +189,16 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── MEDIUM LAYOUT ──────────────────────────────────────────────────────
 
     @Composable
-    private fun MediumLayout(cards: List<WidgetCardData>, context: Context) {
+    private fun MediumLayout(state: WidgetUiState, context: Context) {
         LazyColumn(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 14.dp)
+                .padding(horizontal = 8.dp, vertical = 12.dp)
         ) {
-            items(cards, itemId = { it.card.id.toLong() }) { data ->
+            item {
+                IncomeSummaryCard(state.income, isLarge = false)
+            }
+            items(state.cards, itemId = { it.card.id.toLong() }) { data ->
                 Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 6.dp)) {
                     MiniCardRow(data, context)
                 }
@@ -287,13 +318,16 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── LARGE LAYOUT ───────────────────────────────────────────────────────
 
     @Composable
-    private fun LargeLayout(cards: List<WidgetCardData>, context: Context) {
+    private fun LargeLayout(state: WidgetUiState, context: Context) {
         LazyColumn(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .padding(horizontal = 8.dp, vertical = 14.dp)
         ) {
-            items(cards, itemId = { it.card.id.toLong() }) { data ->
+            item {
+                IncomeSummaryCard(state.income, isLarge = true)
+            }
+            items(state.cards, itemId = { it.card.id.toLong() }) { data ->
                 Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 6.dp)) {
                     FullCardItem(data, context)
                 }
@@ -437,12 +471,112 @@ class CreditCardWidget : GlanceAppWidget() {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Agrega una tarjeta",
+                text = "Sin datos de ingresos o tarjetas",
                 style = TextStyle(
                     fontSize = 13.sp,
                     color = WidgetColors.textSecondary
                 )
             )
+        }
+    }
+
+    // ─── INCOME SUMMARY CARD ────────────────────────────────────────────────
+
+    @Composable
+    private fun IncomeSummaryCard(data: WidgetIncomeData, isLarge: Boolean) {
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .height(if (isLarge) 110.dp else 90.dp)
+                .padding(vertical = 6.dp, horizontal = 6.dp)
+                .cornerRadius(16.dp)
+                .background(WidgetColors.incomeBrand)
+                .padding(14.dp)
+        ) {
+            Column(modifier = GlanceModifier.fillMaxSize()) {
+                Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Presupuesto Mensual",
+                        style = TextStyle(
+                            fontSize = 10.sp,
+                            color = WidgetColors.textOnCardSecondary
+                        )
+                    )
+                    Spacer(GlanceModifier.defaultWeight())
+                    if (isLarge) {
+                        Text(
+                            text = "Presupuesto total: $${formatCurrency(data.totalIncome)}",
+                            style = TextStyle(
+                                fontSize = 9.sp,
+                                color = WidgetColors.textOnCardSecondary
+                            )
+                        )
+                    }
+                }
+                
+                Spacer(GlanceModifier.defaultWeight())
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "$${formatCurrency(data.totalSpent)}",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = WidgetColors.textOnCard
+                        )
+                    )
+                    Text(
+                        text = " de $${formatCurrency(data.totalIncome)}",
+                        style = TextStyle(
+                            fontSize = 11.sp,
+                            color = WidgetColors.textOnCardSecondary
+                        )
+                    )
+                }
+                
+                Spacer(GlanceModifier.height(8.dp))
+                
+                LinearProgressIndicator(
+                    progress = data.progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(6.dp).cornerRadius(3.dp),
+                    color = ColorProvider(Color.White),
+                    backgroundColor = ColorProvider(Color.White.copy(alpha = 0.25f))
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun IncomeSummaryMiniCard(data: WidgetIncomeData) {
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .padding(bottom = 12.dp)
+                .cornerRadius(24.dp)
+                .background(WidgetColors.incomeBrand)
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        ) {
+            Column(modifier = GlanceModifier.fillMaxSize()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Gasto Mensual",
+                        style = TextStyle(fontSize = 9.sp, color = WidgetColors.textOnCardSecondary)
+                    )
+                    Spacer(GlanceModifier.defaultWeight())
+                    Text(
+                        text = "${(data.progress * 100).toInt()}%",
+                        style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold, color = WidgetColors.textOnCard)
+                    )
+                }
+                Spacer(GlanceModifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = data.progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(4.dp).cornerRadius(2.dp),
+                    color = ColorProvider(Color.White),
+                    backgroundColor = ColorProvider(Color.White.copy(alpha = 0.25f))
+                )
+            }
         }
     }
 

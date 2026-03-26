@@ -10,6 +10,8 @@ object WidgetColors {
     val widgetBackground = ColorProvider(R.color.widget_background)
     val textPrimary = ColorProvider(R.color.widget_text_primary)
     val textSecondary = ColorProvider(R.color.widget_text_secondary)
+    val incomeBrand = ColorProvider(R.color.widget_income_brand)
+    val incomeOverlay = ColorProvider(R.color.widget_income_overlay)
 
     // Textos SOBRE la tarjeta: siempre blancos
     val textOnCard = ColorProvider(Color(0xFFFFFFFF))
