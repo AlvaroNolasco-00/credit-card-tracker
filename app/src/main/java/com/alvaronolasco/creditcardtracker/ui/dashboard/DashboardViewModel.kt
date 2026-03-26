@@ -1,0 +1,148 @@
+package com.alvaronolasco.creditcardtracker.ui.dashboard
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
+import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
+import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
+import com.alvaronolasco.creditcardtracker.util.DateUtils
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.*
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
+import javax.inject.Inject
+
+data class CardDashboardState(
+    val card: CreditCard,
+    val totalSpent: Double = 0.0,
+    val extraFinancingPayment: Double = 0.0,
+    val daysUntilCutOff: Int = 0,
+    val daysUntilPayment: Int = 0,
+    val cutOffDateLabel: String = ""
+)
+
+data class DashboardUiState(
+    val cards: List<CardDashboardState> = emptyList(),
+    val totalMonthlyIncome: Double = 0.0,
+    val totalAllCardsSpent: Double = 0.0,
+    val hasIncomeProfile: Boolean = false,
+    val showExtraIncomePrompt: Boolean = false,
+    val showMonthlyPrompt: Boolean = false,
+    val promptDismissedMonth: String? = null,
+    val isLoading: Boolean = true,
+    val selectedCardIndex: Int = 0,
+    val recentExpenses: List<ExpenseWithCategories> = emptyList()
+)
+
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
+    private val repository: CreditCardRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(DashboardUiState())
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    private val _selectedCardIndex = MutableStateFlow(0)
+
+    init {
+        loadDashboard()
+        loadRecentExpenses()
+    }
+
+    fun selectCard(index: Int) {
+        _selectedCardIndex.value = index
+        _uiState.update { it.copy(selectedCardIndex = index) }
+    }
+
+    private fun loadDashboard() {
+        val currentMonthYear = DateUtils.getCurrentMonthYear()
+
+        combine(
+            repository.getAllCards().flatMapLatest { cards ->
+                if (cards.isEmpty()) flowOf(emptyList())
+                else combine(cards.map { card ->
+                    val (start, end) = DateUtils.getCurrentPeriodRange(card.cutOffDay)
+                    repository.getTotalSpentInPeriod(card.id, start, end).map { total ->
+                        CardDashboardState(
+                            card = card,
+                            totalSpent = total ?: 0.0,
+                            extraFinancingPayment = card.extraFinancingPayment,
+                            daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
+                            daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
+                            cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
+                        )
+                    }
+                }) { it.toList() }
+            },
+            repository.getIncomeProfile(),
+            repository.getIncomeEntriesForMonth(currentMonthYear),
+            repository.getTotalIncomeForMonth(currentMonthYear)
+        ) { cardStates, profile, entries, totalIncome ->
+            val hasProfile = profile != null
+            val isPromptDismissed = _uiState.value.promptDismissedMonth == currentMonthYear
+
+            var showExtraPrompt = false
+            var showManualPrompt = false
+
+            if (hasProfile && !isPromptDismissed) {
+                val daysToPayday = entries.filter { it.isRecurring }.map { DateUtils.getDaysUntil(it.dayOfMonth) }
+                showExtraPrompt = profile?.incomeMode == "RECURRING" && daysToPayday.any { it in 0..3 }
+                showManualPrompt = profile?.incomeMode == "MONTHLY_PROMPT" && entries.none { it.monthYear == currentMonthYear }
+            }
+
+            val totalAllCards = cardStates.sumOf { it.totalSpent + it.extraFinancingPayment }
+
+            _uiState.update {
+                it.copy(
+                    cards = cardStates,
+                    totalMonthlyIncome = totalIncome ?: 0.0,
+                    totalAllCardsSpent = totalAllCards,
+                    hasIncomeProfile = hasProfile,
+                    showExtraIncomePrompt = showExtraPrompt,
+                    showMonthlyPrompt = showManualPrompt,
+                    isLoading = false
+                )
+            }
+        }.launchIn(viewModelScope)
+    }
+
+    private fun loadRecentExpenses() {
+        combine(_uiState, _selectedCardIndex) { state, index ->
+            state.cards.getOrNull(index)?.card?.id
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { cardId ->
+                if (cardId != null) repository.getExpensesWithCategoriesByCard(cardId).map { it.take(5) }
+                else flowOf(emptyList())
+            }
+            .onEach { expenses ->
+                _uiState.update { it.copy(recentExpenses = expenses) }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    fun dismissPrompt() {
+        val currentMonthYear = DateUtils.getCurrentMonthYear()
+        _uiState.update {
+            it.copy(
+                promptDismissedMonth = currentMonthYear,
+                showExtraIncomePrompt = false,
+                showMonthlyPrompt = false
+            )
+        }
+    }
+
+    private fun computeCutOffDateLabel(cutOffDay: Int): String {
+        val today = LocalDate.now()
+        var cutDate = today.withDayOfMonth(cutOffDay.coerceIn(1, today.lengthOfMonth()))
+        if (cutDate.isBefore(today)) {
+            val nextMonth = cutDate.plusMonths(1)
+            cutDate = nextMonth.withDayOfMonth(cutOffDay.coerceIn(1, nextMonth.lengthOfMonth()))
+        }
+        val monthName = cutDate.month
+            .getDisplayName(TextStyle.FULL, Locale("es"))
+            .replaceFirstChar { it.uppercase() }
+        return "${cutDate.dayOfMonth} de $monthName"
+    }
+}

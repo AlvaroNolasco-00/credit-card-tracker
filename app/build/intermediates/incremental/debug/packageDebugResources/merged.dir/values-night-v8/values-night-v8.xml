@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#141A16</color>
+    <color name="widget_text_primary">#E1E1E1</color>
+    <color name="widget_text_secondary">#B0B0B0</color>
+    <style name="Theme.CreditCardTracker" parent="android:Theme.Material.NoActionBar"/>
+</resources>

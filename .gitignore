@@ -1,0 +1,61 @@
+# Gradle
+.gradle/
+.gradle
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# Android
+local.properties
+.idea/
+.idea
+*.iml
+*.apk
+*.aar
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Build artifacts
+bin/
+gen/
+out/
+
+# Keystore
+*.jks
+*.keystore
+*.p12
+
+# Logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Runtime
+.data/
+
+# Misc
+*.sublime-workspace
+*.sublime-project

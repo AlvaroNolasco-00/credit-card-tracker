@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.alvaronolasco.creditcardtracker.app-mergeDebugResources-78:/values-hdpi-v4/values-hdpi-v4.xml",
+            "map": [
+                {
+                    "source": "/Users/alvaronolasco/.gradle/caches/transforms-4/66ac0a80e7acc4a826261c5cca8872fc/transformed/appcompat-1.6.1/res/values-hdpi-v4/values-hdpi-v4.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "6",
+                        "endColumns": "13",
+                        "endOffsets": "327"
+                    }
+                }
+            ]
+        }
+    ]
+}

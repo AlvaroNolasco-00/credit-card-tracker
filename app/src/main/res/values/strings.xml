@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Credit Card Tracker</string>
+    <string name="widget_description">Muestra tus tarjetas de credito con fechas de corte y pago</string>
+</resources>
