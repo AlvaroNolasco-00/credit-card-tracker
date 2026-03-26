@@ -27,6 +27,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-008](widget/ADR-008-widget-card-data-computed-properties.md) | WidgetCardData centraliza totalDue y progress como propiedades computadas | widget | Aceptado | 2026-03-26 |
 | [ADR-009](widget/ADR-009-continuous-progress-bar.md) | Barra de progreso continua en lugar de segmentada | widget | Aceptado | 2026-03-26 |
 | [ADR-010](widget/ADR-010-widget-visual-refinement.md) | Refinamiento visual del layout de tarjetas en widget | widget | Aceptado | 2026-03-26 |
+| [ADR-011](widget/ADR-011-widget-grid-4x4-support.md) | Soporte para redimensionamiento del widget a cuadrícula 4x4 | widget | Aceptado | 2026-03-26 |
 
 ## Regla de escritura
 
