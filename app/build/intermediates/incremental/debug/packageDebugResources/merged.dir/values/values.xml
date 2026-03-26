@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="widget_background">#F5F6F4</color>
-    <color name="widget_text_primary">#1A1A1A</color>
-    <color name="widget_text_secondary">#757575</color>
-    <string name="app_name">Credit Card Tracker</string>
-    <string name="widget_description">Muestra tus tarjetas de credito con fechas de corte y pago</string>
-    <style name="Theme.CreditCardTracker" parent="android:Theme.Material.Light.NoActionBar"/>
-</resources>

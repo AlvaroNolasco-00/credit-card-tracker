@@ -786,6 +786,13 @@ drawable notify_panel_notification_icon_bg
 drawable test_level_drawable
 drawable tooltip_frame_dark
 drawable tooltip_frame_light
+drawable widget_card_blue
+drawable widget_card_dark
+drawable widget_card_green
+drawable widget_card_orange
+drawable widget_card_purple
+drawable widget_card_red
+drawable widget_card_yellow
 id ALT
 id CTRL
 id FUNCTION

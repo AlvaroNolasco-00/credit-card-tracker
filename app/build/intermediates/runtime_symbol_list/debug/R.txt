@@ -785,6 +785,13 @@ int drawable notify_panel_notification_icon_bg 0x7f070097
 int drawable test_level_drawable 0x7f070098
 int drawable tooltip_frame_dark 0x7f070099
 int drawable tooltip_frame_light 0x7f07009a
+int drawable widget_card_blue 0x7f07009b
+int drawable widget_card_dark 0x7f07009c
+int drawable widget_card_green 0x7f07009d
+int drawable widget_card_orange 0x7f07009e
+int drawable widget_card_purple 0x7f07009f
+int drawable widget_card_red 0x7f0700a0
+int drawable widget_card_yellow 0x7f0700a1
 int id ALT 0x7f080000
 int id CTRL 0x7f080001
 int id FUNCTION 0x7f080002

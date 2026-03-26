@@ -5,6 +5,13 @@ color widget_text_primary
 color widget_text_secondary
 drawable ic_launcher_background
 drawable ic_launcher_foreground
+drawable widget_card_blue
+drawable widget_card_dark
+drawable widget_card_green
+drawable widget_card_orange
+drawable widget_card_purple
+drawable widget_card_red
+drawable widget_card_yellow
 layout glance_default_loading_layout
 layout widget_preview
 mipmap ic_launcher
