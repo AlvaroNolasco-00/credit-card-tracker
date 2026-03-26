@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.alvaronolasco.creditcardtracker.ui.navigation.Navigation
 import com.alvaronolasco.creditcardtracker.ui.theme.CreditCardTrackerTheme
+import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -32,6 +34,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        intent.getIntExtra("card_id", -1).takeIf { it > 0 }?.let {
+            WidgetDeepLink.navigate(it)
+        }
+
         setContent {
             CreditCardTrackerTheme {
                 Surface(
@@ -41,6 +47,14 @@ class MainActivity : ComponentActivity() {
                     Navigation()
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getIntExtra("card_id", -1).takeIf { it > 0 }?.let {
+            WidgetDeepLink.navigate(it)
         }
     }
 }
