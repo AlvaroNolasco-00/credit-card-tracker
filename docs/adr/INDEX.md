@@ -24,6 +24,8 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-005](architecture/ADR-005-widget-deeplink-singleton.md) | WidgetDeepLink: singleton StateFlow para deep linking | architecture | Aceptado | 2026-03-25 |
 | [ADR-006](widget/ADR-006-progress-bar-spending.md) | Barra de progreso de gastos vs límite en widget | widget | Aceptado | 2026-03-25 |
 | [ADR-007](architecture/ADR-007-widget-update-guarantee.md) | Garantizar actualización del widget tras cambios de gastos | architecture | Aceptado | 2026-03-26 |
+| [ADR-008](widget/ADR-008-widget-card-data-computed-properties.md) | WidgetCardData centraliza totalDue y progress como propiedades computadas | widget | Aceptado | 2026-03-26 |
+| [ADR-009](widget/ADR-009-continuous-progress-bar.md) | Barra de progreso continua en lugar de segmentada | widget | Aceptado | 2026-03-26 |
 
 ## Regla de escritura
 

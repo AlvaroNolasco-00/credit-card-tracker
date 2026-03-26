@@ -23,7 +23,6 @@ import com.alvaronolasco.creditcardtracker.MainActivity
 import com.alvaronolasco.creditcardtracker.data.AppDatabase
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.util.DateUtils
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -33,7 +32,12 @@ data class WidgetCardData(
     val card: CreditCard,
     val totalSpent: Double,
     val dateInfo: WidgetDateInfo
-)
+) {
+    val totalDue: Double = totalSpent + card.extraFinancingPayment
+    val progress: Float = if (card.creditLimit > 0)
+        (totalDue / card.creditLimit).toFloat().coerceIn(0f, 1f)
+    else 0f
+}
 
 class CreditCardWidget : GlanceAppWidget() {
 
@@ -177,10 +181,6 @@ class CreditCardWidget : GlanceAppWidget() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("card_id", data.card.id)
         }
-        val progress = if (data.card.creditLimit > 0)
-            (data.totalSpent / data.card.creditLimit).toFloat().coerceIn(0f, 1f)
-        else 0f
-
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
@@ -272,11 +272,11 @@ class CreditCardWidget : GlanceAppWidget() {
                     }
                 }
                 // Barra de progreso de saldo al fondo de la tarjeta
-                SegmentedProgressBar(
-                    progress = progress,
+                CreditUsageProgressBar(
+                    progress = data.progress,
                     modifier = GlanceModifier
                         .fillMaxWidth()
-                        .height(4.dp)
+                        .height(6.dp)
                         .padding(horizontal = 10.dp)
                 )
                 Spacer(GlanceModifier.height(4.dp))
@@ -313,10 +313,6 @@ class CreditCardWidget : GlanceAppWidget() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("card_id", data.card.id)
         }
-        val progress = if (data.card.creditLimit > 0)
-            (data.totalSpent / data.card.creditLimit).toFloat().coerceIn(0f, 1f)
-        else 0f
-
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
@@ -383,9 +379,9 @@ class CreditCardWidget : GlanceAppWidget() {
                 }
                 Spacer(GlanceModifier.height(5.dp))
                 // Barra de progreso de saldo
-                SegmentedProgressBar(
-                    progress = progress,
-                    modifier = GlanceModifier.fillMaxWidth().height(4.dp)
+                CreditUsageProgressBar(
+                    progress = data.progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(6.dp)
                 )
                 Spacer(GlanceModifier.defaultWeight())
                 // Fila 3: nombre + badge fecha
@@ -452,27 +448,34 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── PROGRESS BAR ───────────────────────────────────────────────────────
 
     @Composable
-    private fun SegmentedProgressBar(progress: Float, modifier: GlanceModifier = GlanceModifier) {
-        val filled = (progress * 10).roundToInt().coerceIn(0, 10)
+    private fun CreditUsageProgressBar(progress: Float, modifier: GlanceModifier = GlanceModifier) {
         val fillColor = when {
             progress >= 0.95f -> Color(0xFFFF6B6B)
             progress >= 0.80f -> Color(0xFFFFCC80)
             else              -> Color.White
         }
-        Row(modifier = modifier) {
-            repeat(10) { i ->
+
+        // Usamos una fila completa para la barra lo que permite que sea una sola entidad visual continua
+        Row(
+            modifier = modifier
+                .background(ColorProvider(Color.White.copy(alpha = 0.25f)))
+                .cornerRadius(3.dp)
+        ) {
+            if (progress > 0) {
                 Box(
                     modifier = GlanceModifier
-                        .defaultWeight()
+                        .defaultWeight(progress)
                         .fillMaxHeight()
-                        .background(
-                            ColorProvider(
-                                if (i < filled) fillColor
-                                else Color.White.copy(alpha = 0.25f)
-                            )
-                        )
+                        .background(ColorProvider(fillColor))
+                        .cornerRadius(3.dp)
                 ) {}
-                if (i < 9) Spacer(GlanceModifier.width(2.dp))
+            }
+            if (progress < 1f) {
+                Box(
+                    modifier = GlanceModifier
+                        .defaultWeight(1f - progress)
+                        .fillMaxHeight()
+                ) {}
             }
         }
     }
