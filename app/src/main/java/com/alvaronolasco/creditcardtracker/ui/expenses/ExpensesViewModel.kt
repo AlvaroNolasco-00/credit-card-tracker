@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.alvaronolasco.creditcardtracker.data.entity.Category
+import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.Expense
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
@@ -22,7 +23,8 @@ data class ExpensesUiState(
     val isLoading: Boolean = false,
     val ocrResultAmount: Double? = null,
     val ocrProcessing: Boolean = false,
-    val currentExpense: ExpenseWithCategories? = null
+    val currentExpense: ExpenseWithCategories? = null,
+    val currentCard: CreditCard? = null
 )
 
 @HiltViewModel
@@ -52,6 +54,13 @@ class ExpensesViewModel @Inject constructor(
             .onEach { expenses ->
                 _uiState.update { it.copy(expenses = expenses) }
             }.launchIn(viewModelScope)
+    }
+
+    fun loadCard(cardId: Int) {
+        viewModelScope.launch {
+            val card = repository.getCardById(cardId)
+            _uiState.update { it.copy(currentCard = card) }
+        }
     }
 
     fun loadExpense(expenseId: Int) {
@@ -95,7 +104,7 @@ class ExpensesViewModel @Inject constructor(
                 expenseId
             }
             repository.setExpenseCategories(savedId, categoryIds)
-            CreditCardWidgetReceiver.updateAllWidgets(context)
+            CreditCardWidgetReceiver.updateAllWidgets(context)  // Espera a que complete
             onSuccess()
         }
     }
@@ -116,7 +125,7 @@ class ExpensesViewModel @Inject constructor(
     fun deleteExpense(expense: Expense, onSuccess: () -> Unit) {
         viewModelScope.launch {
             repository.deleteExpense(expense)
-            CreditCardWidgetReceiver.updateAllWidgets(context)
+            CreditCardWidgetReceiver.updateAllWidgets(context)  // Espera a que complete
             onSuccess()
         }
     }

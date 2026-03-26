@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,14 +25,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.alvaronolasco.creditcardtracker.data.entity.Category
+import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.ui.components.*
 import com.alvaronolasco.creditcardtracker.ui.theme.Dimensions
 import java.io.File
@@ -58,6 +63,10 @@ fun AddExpenseScreen(
 
     val isEditMode = expenseId != null
 
+    LaunchedEffect(cardId) {
+        if (!isEditMode && cardId > 0) viewModel.loadCard(cardId)
+    }
+
     LaunchedEffect(expenseId) {
         if (expenseId != null) {
             viewModel.loadExpense(expenseId)
@@ -70,6 +79,7 @@ fun AddExpenseScreen(
             description = ewc.expense.description
             selectedCategoryIds = ewc.categories.map { it.id }.toSet()
             capturedImageUri = ewc.expense.receiptImagePath?.let { Uri.parse(it) }
+            viewModel.loadCard(ewc.expense.cardId)
         }
     }
 
@@ -142,6 +152,10 @@ fun AddExpenseScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SpacingMd)
         ) {
+            uiState.currentCard?.let { card ->
+                CardTargetBanner(card)
+            }
+
             AppTextField(
                 value = amount,
                 onValueChange = { amount = it },
@@ -324,6 +338,52 @@ fun AddExpenseScreen(
                     Text("Eliminar Gasto")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CardTargetBanner(card: CreditCard) {
+    val cardColor = Color(card.color)
+    val darkColor = Color(
+        red = (cardColor.red * 0.65f).coerceIn(0f, 1f),
+        green = (cardColor.green * 0.65f).coerceIn(0f, 1f),
+        blue = (cardColor.blue * 0.65f).coerceIn(0f, 1f)
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .background(
+                brush = Brush.horizontalGradient(listOf(cardColor, darkColor)),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = card.bank,
+                    fontSize = 10.sp,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "**** ${card.lastFourDigits}",
+                    fontSize = 10.sp,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = card.name,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
     }
 }
