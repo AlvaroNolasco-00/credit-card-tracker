@@ -1,6 +1,9 @@
 package com.alvaronolasco.creditcardtracker.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -12,10 +15,19 @@ import com.alvaronolasco.creditcardtracker.ui.expenses.ExpenseSearchScreen
 import com.alvaronolasco.creditcardtracker.ui.income.IncomeSetupScreen
 import com.alvaronolasco.creditcardtracker.ui.income.AddEditIncomeScreen
 import com.alvaronolasco.creditcardtracker.ui.components.CameraPreviewScreen
+import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 
 @Composable
 fun Navigation() {
     val navController = rememberNavController()
+    val pendingCardId by WidgetDeepLink.pendingCardId.collectAsState()
+
+    LaunchedEffect(pendingCardId) {
+        pendingCardId?.let { cardId ->
+            WidgetDeepLink.consume()
+            navController.navigate("add_expense/$cardId")
+        }
+    }
 
     NavHost(navController = navController, startDestination = "dashboard") {
         composable("dashboard") {
