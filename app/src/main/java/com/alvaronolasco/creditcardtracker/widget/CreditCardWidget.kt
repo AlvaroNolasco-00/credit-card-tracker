@@ -11,6 +11,8 @@ import androidx.glance.*
 import androidx.glance.appwidget.*
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.layout.*
 import androidx.glance.ImageProvider
 import androidx.glance.text.FontWeight
@@ -21,6 +23,7 @@ import com.alvaronolasco.creditcardtracker.MainActivity
 import com.alvaronolasco.creditcardtracker.data.AppDatabase
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.util.DateUtils
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -82,9 +85,9 @@ class CreditCardWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity(launchIntent))
         ) {
             when {
-                isSmall -> SmallLayout(cards)
-                isLarge -> LargeLayout(cards)
-                else -> MediumLayout(cards)
+                isSmall -> SmallLayout(cards, context)
+                isLarge -> LargeLayout(cards, context)
+                else -> MediumLayout(cards, context)
             }
         }
     }
@@ -92,11 +95,11 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── SMALL LAYOUT ───────────────────────────────────────────────────────
 
     @Composable
-    private fun SmallLayout(cards: List<WidgetCardData>) {
+    private fun SmallLayout(cards: List<WidgetCardData>, context: Context) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(16.dp)
         ) {
             Text(
                 text = "Tarjetas",
@@ -107,20 +110,12 @@ class CreditCardWidget : GlanceAppWidget() {
                 )
             )
             Spacer(GlanceModifier.height(8.dp))
-
-            cards.take(2).forEach { data ->
-                SmallCardRow(data)
-                Spacer(GlanceModifier.height(4.dp))
-            }
-
-            if (cards.size > 2) {
-                Text(
-                    text = "+ ${cards.size - 2} mas",
-                    style = TextStyle(
-                        fontSize = 10.sp,
-                        color = WidgetColors.textSecondary
-                    )
-                )
+            LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
+                items(cards, itemId = { it.card.id.toLong() }) { data ->
+                    Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 5.dp, horizontal = 8.dp)) {
+                        SmallCardRow(data)
+                    }
+                }
             }
         }
     }
@@ -162,103 +157,129 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── MEDIUM LAYOUT ──────────────────────────────────────────────────────
 
     @Composable
-    private fun MediumLayout(cards: List<WidgetCardData>) {
-        Column(
+    private fun MediumLayout(cards: List<WidgetCardData>, context: Context) {
+        LazyColumn(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(10.dp)
+                .padding(horizontal = 8.dp, vertical = 14.dp)
         ) {
-            cards.take(2).forEach { data ->
-                MiniCardRow(data)
-                Spacer(GlanceModifier.height(6.dp))
-            }
-            if (cards.size > 2) {
-                Text(
-                    text = "+ ${cards.size - 2} mas",
-                    style = TextStyle(
-                        fontSize = 10.sp,
-                        color = WidgetColors.textSecondary
-                    ),
-                    modifier = GlanceModifier.padding(start = 4.dp)
-                )
+            items(cards, itemId = { it.card.id.toLong() }) { data ->
+                Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 6.dp)) {
+                    MiniCardRow(data, context)
+                }
             }
         }
     }
 
     @Composable
-    private fun MiniCardRow(data: WidgetCardData) {
+    private fun MiniCardRow(data: WidgetCardData, context: Context) {
+        val addExpenseIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("card_id", data.card.id)
+        }
+        val progress = if (data.card.creditLimit > 0)
+            (data.totalSpent / data.card.creditLimit).toFloat().coerceIn(0f, 1f)
+        else 0f
+
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(56.dp)
                 .cornerRadius(14.dp)
                 .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Row(
-                modifier = GlanceModifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Lado izquierdo: banco + nombre
-                Column(modifier = GlanceModifier.defaultWeight()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = data.card.bank,
-                            style = TextStyle(
-                                fontSize = 9.sp,
-                                color = WidgetColors.textOnCardSecondary
+            Column(modifier = GlanceModifier.fillMaxSize()) {
+                // Contenido principal
+                Row(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Lado izquierdo: banco + nombre
+                    Column(modifier = GlanceModifier.defaultWeight()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = data.card.bank,
+                                style = TextStyle(
+                                    fontSize = 9.sp,
+                                    color = WidgetColors.textOnCardSecondary
+                                )
                             )
-                        )
-                        Spacer(GlanceModifier.defaultWeight())
-                        // Mini chip decorativo
-                        Box(
-                            modifier = GlanceModifier
-                                .width(16.dp)
-                                .height(12.dp)
-                                .cornerRadius(3.dp)
-                                .background(ColorProvider(WidgetColors.chipOverlay))
-                        ) {}
-                    }
-                    Text(
-                        text = data.card.name,
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = WidgetColors.textOnCard
-                        )
-                    )
-                }
-                Spacer(GlanceModifier.width(12.dp))
-                // Lado derecho: digitos + fecha
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "**** ${data.card.lastFourDigits}",
-                        style = TextStyle(
-                            fontSize = 10.sp,
-                            color = WidgetColors.textOnCardSecondary
-                        )
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(GlanceModifier.defaultWeight())
+                        }
                         Text(
-                            text = "${data.dateInfo.label} ${data.dateInfo.dayNumber}",
-                            style = TextStyle(
-                                fontSize = 9.sp,
-                                color = WidgetColors.textOnCardSecondary
-                            )
-                        )
-                        Text(
-                            text = " · ${data.dateInfo.dateText}",
+                            text = data.card.name,
                             style = TextStyle(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
-                                color = if (data.dateInfo.isUrgent)
-                                    ColorProvider(WidgetColors.urgentOnCard)
-                                else
-                                    WidgetColors.textOnCard
+                                fontSize = 11.sp,
+                                color = WidgetColors.textOnCard
                             )
                         )
                     }
+                    Spacer(GlanceModifier.width(8.dp))
+                    // Lado derecho: digitos + fecha + boton +
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "**** ${data.card.lastFourDigits}",
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    color = WidgetColors.textOnCardSecondary
+                                )
+                            )
+                            Spacer(GlanceModifier.width(6.dp))
+                            Box(
+                                modifier = GlanceModifier
+                                    .width(20.dp)
+                                    .height(14.dp)
+                                    .cornerRadius(6.dp)
+                                    .background(ColorProvider(WidgetColors.chipOverlay))
+                                    .clickable(actionStartActivity(addExpenseIntent)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "+",
+                                    style = TextStyle(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp,
+                                        color = WidgetColors.textOnCard
+                                    )
+                                )
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${data.dateInfo.label} ${data.dateInfo.dayNumber}",
+                                style = TextStyle(
+                                    fontSize = 9.sp,
+                                    color = WidgetColors.textOnCardSecondary
+                                )
+                            )
+                            Text(
+                                text = " · ${data.dateInfo.dateText}",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp,
+                                    color = if (data.dateInfo.isUrgent)
+                                        ColorProvider(WidgetColors.urgentOnCard)
+                                    else
+                                        WidgetColors.textOnCard
+                                )
+                            )
+                        }
+                    }
                 }
+                // Barra de progreso de saldo al fondo de la tarjeta
+                SegmentedProgressBar(
+                    progress = progress,
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .padding(horizontal = 10.dp)
+                )
+                Spacer(GlanceModifier.height(4.dp))
             }
         }
     }
@@ -266,48 +287,46 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── LARGE LAYOUT ───────────────────────────────────────────────────────
 
     @Composable
-    private fun LargeLayout(cards: List<WidgetCardData>) {
-        Column(
+    private fun LargeLayout(cards: List<WidgetCardData>, context: Context) {
+        LazyColumn(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(10.dp)
+                .padding(horizontal = 8.dp, vertical = 14.dp)
         ) {
-            cards.take(3).forEach { data ->
-                FullCardItem(data)
-                Spacer(GlanceModifier.height(6.dp))
-            }
-            if (cards.size > 3) {
-                Text(
-                    text = "+ ${cards.size - 3} mas",
-                    style = TextStyle(
-                        fontSize = 10.sp,
-                        color = WidgetColors.textSecondary
-                    ),
-                    modifier = GlanceModifier.padding(start = 4.dp)
-                )
+            items(cards, itemId = { it.card.id.toLong() }) { data ->
+                Column(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 6.dp)) {
+                    FullCardItem(data, context)
+                }
             }
         }
     }
 
     @Composable
-    private fun FullCardItem(data: WidgetCardData) {
+    private fun FullCardItem(data: WidgetCardData, context: Context) {
         val daysShort = when (data.dateInfo.daysRemaining) {
             0 -> "HOY"
             1 -> "1d"
             else -> "${data.dateInfo.daysRemaining}d"
         }
         val badgeText = "${data.dateInfo.label} ${data.dateInfo.dayNumber} · $daysShort"
+        val addExpenseIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("card_id", data.card.id)
+        }
+        val progress = if (data.card.creditLimit > 0)
+            (data.totalSpent / data.card.creditLimit).toFloat().coerceIn(0f, 1f)
+        else 0f
 
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .height(76.dp)
+                .height(84.dp)
                 .cornerRadius(16.dp)
                 .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                // Fila 1: banco + chip
+                // Fila 1: banco + boton +
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -322,11 +341,22 @@ class CreditCardWidget : GlanceAppWidget() {
                     Spacer(GlanceModifier.defaultWeight())
                     Box(
                         modifier = GlanceModifier
-                            .width(20.dp)
-                            .height(14.dp)
-                            .cornerRadius(3.dp)
+                            .width(24.dp)
+                            .height(16.dp)
+                            .cornerRadius(8.dp)
                             .background(ColorProvider(WidgetColors.chipOverlay))
-                    ) {}
+                            .clickable(actionStartActivity(addExpenseIntent)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "+",
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = WidgetColors.textOnCard
+                            )
+                        )
+                    }
                 }
                 Spacer(GlanceModifier.height(2.dp))
                 // Fila 2: gasto + ultimos 4 digitos
@@ -351,6 +381,12 @@ class CreditCardWidget : GlanceAppWidget() {
                         )
                     )
                 }
+                Spacer(GlanceModifier.height(5.dp))
+                // Barra de progreso de saldo
+                SegmentedProgressBar(
+                    progress = progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(4.dp)
+                )
                 Spacer(GlanceModifier.defaultWeight())
                 // Fila 3: nombre + badge fecha
                 Row(
@@ -366,7 +402,6 @@ class CreditCardWidget : GlanceAppWidget() {
                         )
                     )
                     Spacer(GlanceModifier.defaultWeight())
-                    // Badge pill
                     Box(
                         modifier = GlanceModifier
                             .cornerRadius(8.dp)
@@ -414,6 +449,34 @@ class CreditCardWidget : GlanceAppWidget() {
         }
     }
 
+    // ─── PROGRESS BAR ───────────────────────────────────────────────────────
+
+    @Composable
+    private fun SegmentedProgressBar(progress: Float, modifier: GlanceModifier = GlanceModifier) {
+        val filled = (progress * 10).roundToInt().coerceIn(0, 10)
+        val fillColor = when {
+            progress >= 0.95f -> Color(0xFFFF6B6B)
+            progress >= 0.80f -> Color(0xFFFFCC80)
+            else              -> Color.White
+        }
+        Row(modifier = modifier) {
+            repeat(10) { i ->
+                Box(
+                    modifier = GlanceModifier
+                        .defaultWeight()
+                        .fillMaxHeight()
+                        .background(
+                            ColorProvider(
+                                if (i < filled) fillColor
+                                else Color.White.copy(alpha = 0.25f)
+                            )
+                        )
+                ) {}
+                if (i < 9) Spacer(GlanceModifier.width(2.dp))
+            }
+        }
+    }
+
     // ─── HELPERS ────────────────────────────────────────────────────────────
 
     private fun formatCurrency(amount: Double): String = String.format("%,.2f", amount)
@@ -423,12 +486,14 @@ class CreditCardWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CreditCardWidget()
 
     companion object {
-        fun updateAllWidgets(context: Context) {
-            val manager = GlanceAppWidgetManager(context)
-            CoroutineScope(Dispatchers.IO).launch {
+        suspend fun updateAllWidgets(context: Context) {
+            try {
+                val manager = GlanceAppWidgetManager(context)
                 manager.getGlanceIds(CreditCardWidget::class.java).forEach { id ->
                     CreditCardWidget().update(context, id)
                 }
+            } catch (e: Exception) {
+                // Silently catch widget update errors to avoid disrupting the main flow
             }
         }
     }
