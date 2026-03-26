@@ -56,6 +56,9 @@ logs/
 # Runtime
 .data/
 
+# Claude Code
+.claude/
+
 # Misc
 *.sublime-workspace
 *.sublime-project
