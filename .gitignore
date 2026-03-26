@@ -62,4 +62,4 @@ logs/
 # Misc
 *.sublime-workspace
 *.sublime-projects
-app/build/*
+app/build/
