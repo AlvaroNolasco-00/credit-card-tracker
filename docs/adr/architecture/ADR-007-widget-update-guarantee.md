@@ -1,7 +1,7 @@
 # ADR-007: Garantizar actualización del widget tras cambios de gastos
 
 **Fecha:** 2026-03-26
-**Estado:** Aceptado
+**Estado:** Supersedido por ADR-020
 **Categoría:** architecture
 
 ## Contexto
@@ -56,3 +56,7 @@ fun saveExpense(...) {
 - La navegación hacia atrás espera a que complete la actualización del widget.
 - Si la actualización falla (excepción), se captura silenciosamente para no interrumpir el flujo de guardado.
 - El `try/catch` garantiza que `onSuccess()` se ejecute incluso si el widget update falla (el guardado del gasto ya sucedió).
+
+## Nota
+
+**Esta decisión fue supersedida por ADR-020** después de descubrir que en Glance 1.0.0, `GlanceAppWidget.update()` aunque es `suspend`, solo espera hasta que el trabajo se encola (no hasta que se completa). Cuando el usuario navega hacia atrás rapidamente tras guardar un gasto, el trabajo encolado se demora o es deprioritizado por Android. La solución de ADR-020 usa broadcasts (`ACTION_APPWIDGET_UPDATE`) que se manejan en el lifecycle independiente del `GlanceAppWidgetReceiver`, garantizando actualización inmediata.

@@ -1,5 +1,7 @@
 package com.alvaronolasco.creditcardtracker.widget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
@@ -108,7 +110,7 @@ class CreditCardWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity(launchIntent))
         ) {
             when {
-                isSmall -> SmallLayout(state, context)
+                isSmall -> SmallLayout(state)
                 isLarge -> LargeLayout(state, context)
                 else -> MediumLayout(state, context)
             }
@@ -118,7 +120,7 @@ class CreditCardWidget : GlanceAppWidget() {
     // ─── SMALL LAYOUT ───────────────────────────────────────────────────────
 
     @Composable
-    private fun SmallLayout(state: WidgetUiState, context: Context) {
+    private fun SmallLayout(state: WidgetUiState) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -607,14 +609,17 @@ class CreditCardWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CreditCardWidget()
 
     companion object {
-        suspend fun updateAllWidgets(context: Context) {
-            try {
-                val manager = GlanceAppWidgetManager(context)
-                manager.getGlanceIds(CreditCardWidget::class.java).forEach { id ->
-                    CreditCardWidget().update(context, id)
+        fun updateAllWidgets(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val ids = appWidgetManager.getAppWidgetIds(
+                ComponentName(context, CreditCardWidgetReceiver::class.java)
+            )
+            if (ids.isNotEmpty()) {
+                val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
+                    component = ComponentName(context, CreditCardWidgetReceiver::class.java)
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
                 }
-            } catch (e: Exception) {
-                // Silently catch widget update errors to avoid disrupting the main flow
+                context.sendBroadcast(intent)
             }
         }
     }
