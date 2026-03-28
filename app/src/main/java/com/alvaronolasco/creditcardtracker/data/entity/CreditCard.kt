@@ -14,5 +14,6 @@ data class CreditCard(
     val paymentDueDay: Int, // 1-31
     val creditLimit: Double,
     val extraFinancingPayment: Double = 0.0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastPaymentDate: Long = 0L
 )

@@ -8,6 +8,7 @@ import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
 import com.alvaronolasco.creditcardtracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -16,6 +17,9 @@ import javax.inject.Inject
 data class CardDashboardState(
     val card: CreditCard,
     val totalSpent: Double = 0.0,
+    val cutPeriodTotal: Double = 0.0,
+    val cutOffHappenedThisMonth: Boolean = false,
+    val isPaidThisCycle: Boolean = false,
     val extraFinancingPayment: Double = 0.0,
     val daysUntilCutOff: Int = 0,
     val daysUntilPayment: Int = 0,
@@ -63,15 +67,38 @@ class DashboardViewModel @Inject constructor(
                 if (cards.isEmpty()) flowOf(emptyList())
                 else combine(cards.map { card ->
                     val (start, end) = DateUtils.getCurrentPeriodRange(card.cutOffDay)
-                    repository.getTotalSpentInPeriod(card.id, start, end).map { total ->
-                        CardDashboardState(
-                            card = card,
-                            totalSpent = total ?: 0.0,
-                            extraFinancingPayment = card.extraFinancingPayment,
-                            daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
-                            daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
-                            cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
-                        )
+                    val cutHappened = DateUtils.hasCutOffPassedThisMonth(card.cutOffDay)
+                    val currentFlow = repository.getTotalSpentInPeriod(card.id, start, end)
+                    if (cutHappened) {
+                        val (prevStart, prevEnd) = DateUtils.getPreviousPeriodRange(card.cutOffDay)
+                        val isPaid = card.lastPaymentDate > prevEnd
+                        val prevFlow = repository.getTotalSpentInPeriod(card.id, prevStart, prevEnd)
+                        combine(currentFlow, prevFlow) { current, prev ->
+                            CardDashboardState(
+                                card = card,
+                                totalSpent = current ?: 0.0,
+                                cutPeriodTotal = if (isPaid) 0.0 else (prev ?: 0.0),
+                                cutOffHappenedThisMonth = true,
+                                isPaidThisCycle = isPaid,
+                                extraFinancingPayment = card.extraFinancingPayment,
+                                daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
+                                daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
+                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
+                            )
+                        }
+                    } else {
+                        currentFlow.map { total ->
+                            CardDashboardState(
+                                card = card,
+                                totalSpent = total ?: 0.0,
+                                cutPeriodTotal = 0.0,
+                                cutOffHappenedThisMonth = false,
+                                extraFinancingPayment = card.extraFinancingPayment,
+                                daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
+                                daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
+                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
+                            )
+                        }
                     }
                 }) { it.toList() }
             },
@@ -91,7 +118,10 @@ class DashboardViewModel @Inject constructor(
                 showManualPrompt = profile?.incomeMode == "MONTHLY_PROMPT" && entries.none { it.monthYear == currentMonthYear }
             }
 
-            val totalAllCards = cardStates.sumOf { it.totalSpent + it.extraFinancingPayment }
+            val totalAllCards = cardStates.sumOf {
+                if (it.cutOffHappenedThisMonth) it.cutPeriodTotal + it.totalSpent + it.extraFinancingPayment
+                else it.totalSpent + it.extraFinancingPayment
+            }
 
             _uiState.update {
                 it.copy(
@@ -120,6 +150,12 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update { it.copy(recentExpenses = expenses) }
             }
             .launchIn(viewModelScope)
+    }
+
+    fun payBalance(card: CreditCard) {
+        viewModelScope.launch {
+            repository.updateCard(card.copy(lastPaymentDate = System.currentTimeMillis()))
+        }
     }
 
     fun dismissPrompt() {

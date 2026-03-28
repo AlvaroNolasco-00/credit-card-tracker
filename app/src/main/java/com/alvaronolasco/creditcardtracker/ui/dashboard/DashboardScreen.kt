@@ -216,6 +216,21 @@ fun DashboardScreen(
                         }
                     }
 
+                    // Pay balance button (only when cut period has unpaid balance)
+                    if (selectedCard != null &&
+                        selectedCard.cutOffHappenedThisMonth &&
+                        !selectedCard.isPaidThisCycle &&
+                        (selectedCard.cutPeriodTotal + selectedCard.extraFinancingPayment) > 0.0
+                    ) {
+                        item {
+                            PayBalanceCard(
+                                state = selectedCard,
+                                onConfirmPay = { viewModel.payBalance(selectedCard.card) },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+
                     // Income setup banner (when no income configured) or salary usage card
                     item {
                         if (uiState.totalMonthlyIncome == 0.0) {
@@ -293,7 +308,10 @@ fun CreditCardPagerItem(
     state: CardDashboardState,
     onClick: () -> Unit
 ) {
-    val totalDue = state.totalSpent + state.extraFinancingPayment
+    val totalDue = if (state.cutOffHappenedThisMonth)
+        state.cutPeriodTotal + state.totalSpent + state.extraFinancingPayment
+    else
+        state.totalSpent + state.extraFinancingPayment
     val progress = if (state.card.creditLimit > 0) {
         (totalDue / state.card.creditLimit).toFloat().coerceIn(0f, 1f)
     } else 0f
@@ -338,24 +356,52 @@ fun CreditCardPagerItem(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text(
-                            "Saldo",
-                            color = cardTextColor.copy(alpha = 0.65f),
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            "$${String.format("%,.2f", totalDue)}",
-                            color = cardTextColor,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (state.extraFinancingPayment > 0.0) {
+                    if (state.cutOffHappenedThisMonth) {
+                        Column {
                             Text(
-                                "Extra: $${String.format("%,.2f", state.extraFinancingPayment)}",
-                                color = cardTextColor.copy(alpha = 0.7f),
-                                fontSize = 11.sp
+                                "Saldo del corte",
+                                color = cardTextColor.copy(alpha = 0.65f),
+                                fontSize = 10.sp
                             )
+                            Text(
+                                "$${String.format("%,.2f", state.cutPeriodTotal + state.extraFinancingPayment)}",
+                                color = cardTextColor,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Período actual",
+                                color = cardTextColor.copy(alpha = 0.65f),
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                "$${String.format("%,.2f", state.totalSpent)}",
+                                color = cardTextColor,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Column {
+                            Text(
+                                "Saldo",
+                                color = cardTextColor.copy(alpha = 0.65f),
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                "$${String.format("%,.2f", totalDue)}",
+                                color = cardTextColor,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (state.extraFinancingPayment > 0.0) {
+                                Text(
+                                    "Extra: $${String.format("%,.2f", state.extraFinancingPayment)}",
+                                    color = cardTextColor.copy(alpha = 0.7f),
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -437,16 +483,115 @@ fun CardInfoRow(
             showTrailing = isCutOffSoon
         )
 
-        InfoChip(
-            modifier = Modifier.weight(1f),
-            icon = Icons.Default.AttachMoney,
-            title = "Pago",
-            dateLabel = null,
-            statusText = if (isPaymentOk) "Estás al día" else "Vence en ${state.daysUntilPayment} días",
-            trailingIcon = if (isPaymentOk) Icons.Default.CheckCircle else Icons.Default.Warning,
-            trailingTint = if (isPaymentOk) Color(0xFF4CAF50) else Color(0xFFFFA000),
-            showTrailing = true
+        if (state.isPaidThisCycle) {
+            InfoChip(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AttachMoney,
+                title = "Pago",
+                dateLabel = null,
+                statusText = "Saldo pagado",
+                trailingIcon = Icons.Default.CheckCircle,
+                trailingTint = Color(0xFF4CAF50),
+                showTrailing = true
+            )
+        } else {
+            InfoChip(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AttachMoney,
+                title = "Pago",
+                dateLabel = null,
+                statusText = if (isPaymentOk) "Estás al día" else "Vence en ${state.daysUntilPayment} días",
+                trailingIcon = if (isPaymentOk) Icons.Default.CheckCircle else Icons.Default.Warning,
+                trailingTint = if (isPaymentOk) Color(0xFF4CAF50) else Color(0xFFFFA000),
+                showTrailing = true
+            )
+        }
+    }
+}
+
+@Composable
+fun PayBalanceCard(
+    state: CardDashboardState,
+    onConfirmPay: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    val amountDue = state.cutPeriodTotal + state.extraFinancingPayment
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Confirmar pago") },
+            text = {
+                Text(
+                    "¿Deseas marcar como pagado el saldo de corte de $${String.format("%,.2f", amountDue)} de la tarjeta ${state.card.name}?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    onConfirmPay()
+                }) {
+                    Text("Pagar", color = Color(0xFF2E7D32))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
         )
+    }
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.4f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF4CAF50).copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.AttachMoney,
+                    contentDescription = null,
+                    tint = Color(0xFF2E7D32),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Saldo a pagar",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "$${String.format("%,.2f", amountDue)}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Button(
+                onClick = { showDialog = true },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4CAF50),
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Pagar", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 

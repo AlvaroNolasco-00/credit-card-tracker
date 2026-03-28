@@ -42,4 +42,22 @@ object DateUtils {
         val today = LocalDate.now()
         return String.format("%d-%02d", today.year, today.monthValue)
     }
+
+    fun hasCutOffPassedThisMonth(cutOffDay: Int): Boolean {
+        val today = LocalDate.now()
+        val cutDate = today.withDayOfMonth(cutOffDay.coerceIn(1, today.lengthOfMonth()))
+        return !cutDate.isAfter(today)
+    }
+
+    fun getPreviousPeriodRange(cutOffDay: Int): Pair<Long, Long> {
+        val today = LocalDate.now()
+        val thisCutOff = today.withDayOfMonth(cutOffDay.coerceIn(1, today.lengthOfMonth()))
+        val prevMonth = thisCutOff.minusMonths(1)
+        val prevCutOff = prevMonth.withDayOfMonth(cutOffDay.coerceIn(1, prevMonth.lengthOfMonth()))
+        val endDate = thisCutOff.minusDays(1)
+        return Pair(
+            prevCutOff.atStartOfDay().toEpochSecond(java.time.ZoneOffset.UTC) * 1000,
+            endDate.atTime(23, 59, 59).toEpochSecond(java.time.ZoneOffset.UTC) * 1000
+        )
+    }
 }

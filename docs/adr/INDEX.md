@@ -37,6 +37,8 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-018](ui/ADR-018-card-text-color-contrast.md) | Color dinámico de texto en tarjetas según fondo | ui | Aceptado | 2026-03-27 |
 | [ADR-019](ui/ADR-019-notification-toggles.md) | Notificaciones con toggles en lista vertical | ui | Aceptado | 2026-03-27 |
 | [ADR-020](architecture/ADR-020-broadcast-widget-update.md) | Actualización de widget via broadcast en lugar de corrutinas | architecture | Aceptado | 2026-03-28 |
+| [ADR-021](ui/ADR-021-split-balance-post-cutoff.md) | División de saldo en dos períodos cuando el corte ya ocurrió | ui | Aceptado | 2026-03-28 |
+| [ADR-022](ui/ADR-022-pay-balance-button.md) | Botón "Pagar Saldo" para liquidar el saldo del corte | ui | Aceptado | 2026-03-28 |
 
 ## Regla de escritura
 
