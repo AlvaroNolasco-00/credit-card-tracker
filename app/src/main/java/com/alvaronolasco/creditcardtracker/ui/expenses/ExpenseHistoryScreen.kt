@@ -98,10 +98,10 @@ fun ExpenseHistoryScreen(
                             },
                             shape = CircleShape,
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ForestGreen,
-                                selectedLabelColor = Color.White,
-                                labelColor = TextDark,
-                                containerColor = SoftGray
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                labelColor = MaterialTheme.colorScheme.onSurface,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
                             ),
                             border = null
                         )
@@ -169,12 +169,12 @@ fun ExpenseHistoryItem(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(48.dp)
-                    .background(color = SoftGray, shape = CircleShape)
+                    .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape)
             ) {
                 Icon(
                     Icons.Default.ReceiptLong,
                     contentDescription = null,
-                    tint = ForestGreen,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -185,19 +185,27 @@ fun ExpenseHistoryItem(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    color = TextDark
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "$categoriesText • ${dateFormatter.format(Date(expense.date))}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (expense.msiMonths > 1) {
+                    Text(
+                        text = "${expense.msiMonths} MSI • $${String.format("%.2f", expense.msiMonthlyAmount)}/mes",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
         Text(
             text = "$${String.format("%.2f", expense.amount)}",
             style = MaterialTheme.typography.titleMedium,
-            color = TextDark,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Black
         )
     }

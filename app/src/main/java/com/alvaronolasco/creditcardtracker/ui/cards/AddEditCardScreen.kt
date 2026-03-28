@@ -184,12 +184,12 @@ fun AddEditCardScreen(
                 }
 
                 Text(
-                    "Date configuration", 
+                    "Date configuration",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                
+
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SpacingMd)) {
                     AppTextField(
                         value = cutOffDay,
@@ -278,13 +278,12 @@ fun AddEditCardScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationSettingsSection(
     configs: List<NotificationConfig>,
     onToggle: (NotificationConfig) -> Unit
 ) {
-    val dayLabels = mapOf(0 to "El día", 1 to "1 día antes", 3 to "3 días antes", 5 to "5 días antes")
+    val dayLabels = mapOf(0 to "El mismo día", 1 to "1 día antes", 3 to "3 días antes", 5 to "5 días antes")
     val sections = listOf(
         "CUT_OFF" to "Corte",
         "PAYMENT" to "Pago"
@@ -297,47 +296,59 @@ fun NotificationSettingsSection(
         color = MaterialTheme.colorScheme.onBackground
     )
 
-    sections.forEach { (type: String, label: String) ->
+    sections.forEach { (type, label) ->
         val typeConfigs = configs.filter { it.type == type }.sortedBy { it.daysBefore }
 
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
                     Icon(
                         Icons.Default.Notifications,
                         contentDescription = null,
-                        tint = ForestGreen,
-                        modifier = Modifier.size(16.dp)
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        label,
+                        "Recordatorios de $label",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    typeConfigs.forEach { config ->
-                        FilterChip(
-                            selected = config.enabled,
-                            onClick = { onToggle(config) },
-                            label = {
-                                Text(
-                                    dayLabels[config.daysBefore] ?: "${config.daysBefore}d",
-                                    fontSize = 11.sp
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ForestGreen,
-                                selectedLabelColor = Color.White
+
+                typeConfigs.forEachIndexed { index, config ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = dayLabels[config.daysBefore] ?: "${config.daysBefore} días antes",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Switch(
+                            checked = config.enabled,
+                            onCheckedChange = { onToggle(config) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }

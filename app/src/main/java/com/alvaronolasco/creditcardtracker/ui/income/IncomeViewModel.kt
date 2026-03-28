@@ -1,12 +1,15 @@
 package com.alvaronolasco.creditcardtracker.ui.income
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.alvaronolasco.creditcardtracker.data.entity.IncomeEntry
 import com.alvaronolasco.creditcardtracker.data.entity.IncomeProfile
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
 import com.alvaronolasco.creditcardtracker.util.DateUtils
+import com.alvaronolasco.creditcardtracker.widget.CreditCardWidgetReceiver
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -20,7 +23,8 @@ data class IncomeUiState(
 
 @HiltViewModel
 class IncomeViewModel @Inject constructor(
-    private val repository: CreditCardRepository
+    private val repository: CreditCardRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(IncomeUiState())
@@ -84,12 +88,14 @@ class IncomeViewModel @Inject constructor(
             } else {
                 repository.updateIncomeEntry(entry)
             }
+            CreditCardWidgetReceiver.updateAllWidgets(context)
         }
     }
 
     fun deleteEntry(entry: IncomeEntry) {
         viewModelScope.launch {
             repository.deleteIncomeEntry(entry)
+            CreditCardWidgetReceiver.updateAllWidgets(context)
         }
     }
 }

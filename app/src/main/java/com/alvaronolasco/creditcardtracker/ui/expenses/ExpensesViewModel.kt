@@ -8,6 +8,7 @@ import com.alvaronolasco.creditcardtracker.data.entity.Category
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.Expense
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
+import java.util.Calendar
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
 import com.alvaronolasco.creditcardtracker.ocr.OcrProcessor
 import com.alvaronolasco.creditcardtracker.widget.CreditCardWidgetReceiver
@@ -86,16 +87,27 @@ class ExpensesViewModel @Inject constructor(
         imagePath: String?,
         date: Long,
         expenseId: Int? = null,
+        msiMonths: Int = 1,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
+            val monthlyAmount = if (msiMonths > 1 && amount > 0) amount / msiMonths else 0.0
+            val msiEndDate = if (msiMonths > 1) {
+                Calendar.getInstance().apply {
+                    timeInMillis = date
+                    add(Calendar.MONTH, msiMonths)
+                }.timeInMillis
+            } else 0L
             val expense = Expense(
                 id = expenseId ?: 0,
                 cardId = cardId,
                 amount = amount,
                 description = description,
                 receiptImagePath = imagePath,
-                date = date
+                date = date,
+                msiMonths = msiMonths,
+                msiMonthlyAmount = monthlyAmount,
+                msiEndDate = msiEndDate
             )
             val savedId = if (expenseId == null) {
                 repository.insertExpense(expense).toInt()

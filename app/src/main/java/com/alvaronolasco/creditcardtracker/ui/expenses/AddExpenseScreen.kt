@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +41,10 @@ import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.ui.components.*
 import com.alvaronolasco.creditcardtracker.ui.theme.Dimensions
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +65,10 @@ fun AddExpenseScreen(
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var newCategoryName by remember { mutableStateOf("") }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
+    var msiEnabled by remember { mutableStateOf(false) }
+    var msiMonths by remember { mutableStateOf(3) }
+    var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val isEditMode = expenseId != null
 
@@ -79,7 +88,12 @@ fun AddExpenseScreen(
             description = ewc.expense.description
             selectedCategoryIds = ewc.categories.map { it.id }.toSet()
             capturedImageUri = ewc.expense.receiptImagePath?.let { Uri.parse(it) }
+            selectedDateMillis = ewc.expense.date
             viewModel.loadCard(ewc.expense.cardId)
+            if (ewc.expense.msiMonths > 1) {
+                msiEnabled = true
+                msiMonths = ewc.expense.msiMonths
+            }
         }
     }
 
@@ -170,6 +184,19 @@ fun AddExpenseScreen(
                 label = "Descripción"
             )
 
+            DatePickerSection(
+                selectedDateMillis = selectedDateMillis,
+                onClick = { showDatePicker = true }
+            )
+
+            MsiSection(
+                enabled = msiEnabled,
+                onEnabledChange = { msiEnabled = it },
+                selectedMonths = msiMonths,
+                onMonthsChange = { msiMonths = it },
+                totalAmount = amount.toDoubleOrNull() ?: 0.0
+            )
+
             Text(
                 "Categorías",
                 style = MaterialTheme.typography.titleMedium,
@@ -200,6 +227,24 @@ fun AddExpenseScreen(
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     )
+                }
+            }
+
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { selectedDateMillis = it }
+                            showDatePicker = false
+                        }) { Text("Aceptar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
                 }
             }
 
@@ -317,8 +362,9 @@ fun AddExpenseScreen(
                         description = description,
                         categoryIds = selectedCategoryIds.toList(),
                         imagePath = capturedImageUri?.toString(),
-                        date = uiState.currentExpense?.expense?.date ?: System.currentTimeMillis(),
+                        date = selectedDateMillis,
                         expenseId = expenseId,
+                        msiMonths = if (msiEnabled) msiMonths else 1,
                         onSuccess = onBack
                     )
                 },
@@ -336,6 +382,85 @@ fun AddExpenseScreen(
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Eliminar Gasto")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MsiSection(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    selectedMonths: Int,
+    onMonthsChange: (Int) -> Unit,
+    totalAmount: Double
+) {
+    val msiOptions = listOf(3, 6, 9, 12, 18, 24)
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Meses sin intereses",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                if (!enabled) {
+                    Text(
+                        text = "Pago de contado",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                }
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = onEnabledChange
+            )
+        }
+
+        if (enabled) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(msiOptions) { months ->
+                    FilterChip(
+                        selected = selectedMonths == months,
+                        onClick = { onMonthsChange(months) },
+                        label = { Text("${months}M") },
+                        shape = RoundedCornerShape(50)
+                    )
+                }
+            }
+
+            if (totalAmount > 0) {
+                val monthly = totalAmount / selectedMonths
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$selectedMonths pagos de",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "$${String.format("%.2f", monthly)}/mes",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
         }
@@ -383,6 +508,51 @@ private fun CardTargetBanner(card: CreditCard) {
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun DatePickerSection(
+    selectedDateMillis: Long,
+    onClick: () -> Unit
+) {
+    val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("es"))
+    val dateLabel = Instant.ofEpochMilli(selectedDateMillis)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .format(formatter)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = "Fecha de transacción",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = dateLabel,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        IconButton(onClick = onClick) {
+            Icon(
+                Icons.Default.DateRange,
+                contentDescription = "Seleccionar fecha",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

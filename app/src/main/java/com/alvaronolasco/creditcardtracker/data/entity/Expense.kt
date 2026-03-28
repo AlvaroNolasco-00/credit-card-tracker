@@ -25,5 +25,8 @@ data class Expense(
     val receiptImagePath: String? = null,
     val ocrRawText: String? = null,
     val date: Long,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val msiMonths: Int = 1,
+    val msiMonthlyAmount: Double = 0.0,
+    val msiEndDate: Long = 0L
 )

@@ -14,7 +14,16 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE cardId = :cardId AND date BETWEEN :startDate AND :endDate ORDER BY date DESC")
     fun getExpensesByCardInPeriod(cardId: Int, startDate: Long, endDate: Long): Flow<List<Expense>>
 
-    @Query("SELECT SUM(amount) FROM expenses WHERE cardId = :cardId AND date BETWEEN :startDate AND :endDate")
+    @Query("""
+        SELECT SUM(CASE WHEN msiMonths > 1 THEN msiMonthlyAmount ELSE amount END)
+        FROM expenses
+        WHERE cardId = :cardId
+        AND (
+            (msiMonths <= 1 AND date BETWEEN :startDate AND :endDate)
+            OR
+            (msiMonths > 1 AND date <= :endDate AND msiEndDate >= :startDate)
+        )
+    """)
     fun getTotalSpentInPeriod(cardId: Int, startDate: Long, endDate: Long): Flow<Double?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

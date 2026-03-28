@@ -133,7 +133,7 @@ fun DashboardScreen(
                                 "Hola Alvaro",
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextDark,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(
@@ -246,19 +246,19 @@ fun DashboardScreen(
                                 "Transacciones",
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextDark
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             IconButton(
                                 onClick = onSearchClick,
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(SoftGray)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                             ) {
                                 Icon(
                                     Icons.Default.Search,
                                     contentDescription = "Buscar gastos",
-                                    tint = TextDark,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -270,7 +270,7 @@ fun DashboardScreen(
                             Text(
                                 "Sin transacciones recientes",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TextGray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 20.dp)
                             )
                         }
@@ -299,6 +299,7 @@ fun CreditCardPagerItem(
     } else 0f
 
     val gradient = CardGradients.getBrushForColor(state.card.color)
+    val cardTextColor = CardGradients.getTextColorForCard(state.card.color)
 
     Surface(
         modifier = Modifier
@@ -340,19 +341,19 @@ fun CreditCardPagerItem(
                     Column {
                         Text(
                             "Saldo",
-                            color = Color.White.copy(alpha = 0.65f),
+                            color = cardTextColor.copy(alpha = 0.65f),
                             fontSize = 12.sp
                         )
                         Text(
                             "$${String.format("%,.2f", totalDue)}",
-                            color = Color.White,
+                            color = cardTextColor,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         if (state.extraFinancingPayment > 0.0) {
                             Text(
                                 "Extra: $${String.format("%,.2f", state.extraFinancingPayment)}",
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = cardTextColor.copy(alpha = 0.7f),
                                 fontSize = 11.sp
                             )
                         }
@@ -360,12 +361,12 @@ fun CreditCardPagerItem(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             "Limite",
-                            color = Color.White.copy(alpha = 0.65f),
+                            color = cardTextColor.copy(alpha = 0.65f),
                             fontSize = 12.sp
                         )
                         Text(
                             "$${String.format("%,.2f", state.card.creditLimit)}",
-                            color = Color.White,
+                            color = cardTextColor,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -383,13 +384,13 @@ fun CreditCardPagerItem(
                     Column {
                         Text(
                             state.card.name,
-                            color = Color.White,
+                            color = cardTextColor,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             "**** ${state.card.lastFourDigits}",
-                            color = Color.White.copy(alpha = 0.75f),
+                            color = cardTextColor.copy(alpha = 0.75f),
                             fontSize = 14.sp
                         )
                     }
@@ -400,11 +401,11 @@ fun CreditCardPagerItem(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "!",
-                            color = Color(state.card.color),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Información de tarjeta",
+                            tint = Color(state.card.color),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -463,7 +464,7 @@ fun InfoChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFF2F2F2),
+        color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp
     ) {
         Row(
@@ -474,28 +475,28 @@ fun InfoChip(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = TextDark
+                tint = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
                     fontSize = 11.sp,
-                    color = TextGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (dateLabel != null) {
                     Text(
                         dateLabel,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextDark
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Text(
                     statusText,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             if (showTrailing) {
@@ -523,9 +524,9 @@ fun TransactionItem(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black.copy(alpha = 0.06f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -553,18 +554,18 @@ fun TransactionItem(
                     expense.description,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextDark
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     "$${String.format("%,.2f", expense.amount)}",
                     fontSize = 13.sp,
-                    color = TextDark
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (categoriesText != null) {
                     Text(
                         categoriesText,
                         fontSize = 12.sp,
-                        color = TextGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -572,7 +573,7 @@ fun TransactionItem(
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color.Gray.copy(alpha = 0.4f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -589,8 +590,8 @@ fun IncomeSetupBanner(
             .fillMaxWidth()
             .clickable(onClick = onSetupClick),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFFFF8E1),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.5f))
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -616,12 +617,12 @@ fun IncomeSetupBanner(
                     "Configura tus ingresos",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF3E2723)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     "Así podrás ver qué porcentaje de tu salario va en tarjetas",
                     fontSize = 12.sp,
-                    color = Color(0xFF6D4C41)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -646,14 +647,14 @@ fun SalaryUsageCard(
     val percent = (ratio * 100).toInt()
 
     val barColor: Color
-    val bgColor: Color
-    val labelColor: Color
     val alertText: String
     when {
-        ratio < 0.30 -> { barColor = Color(0xFF4CAF50); bgColor = Color(0xFFF1F8F2); labelColor = Color(0xFF1B5E20); alertText = "" }
-        ratio < 0.50 -> { barColor = Color(0xFFFFA000); bgColor = Color(0xFFFFFBF0); labelColor = Color(0xFF4E3500); alertText = "Estás usando bastante de tu ingreso" }
-        else         -> { barColor = Color(0xFFE53935); bgColor = Color(0xFFFFF3F3); labelColor = Color(0xFF7F0000); alertText = "¡Tus tarjetas superan el 50% de tu ingreso!" }
+        ratio < 0.30 -> { barColor = Color(0xFF4CAF50); alertText = "" }
+        ratio < 0.50 -> { barColor = Color(0xFFFFA000); alertText = "Estás usando bastante de tu ingreso" }
+        else         -> { barColor = Color(0xFFE53935); alertText = "¡Tus tarjetas superan el 50% de tu ingreso!" }
     }
+    val bgColor = MaterialTheme.colorScheme.surfaceVariant
+    val labelColor = MaterialTheme.colorScheme.onSurface
 
     val animatedProgress by animateFloatAsState(
         targetValue = ratio.toFloat(),
@@ -756,7 +757,7 @@ fun BottomActionBar(
     onCameraOpen: () -> Unit
 ) {
     Surface(
-        color = Color(0xFFEDEDED),
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp
     ) {
         Row(
@@ -775,7 +776,7 @@ fun BottomActionBar(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = SoftLime,
-                    contentColor = TextDark
+                    contentColor = ForestGreen
                 )
             ) {
                 Text(

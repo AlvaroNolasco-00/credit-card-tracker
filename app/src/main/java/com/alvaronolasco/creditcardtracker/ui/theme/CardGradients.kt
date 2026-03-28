@@ -59,6 +59,18 @@ object CardGradients {
         colors = listOf(CardPurpleLight, CardPurpleMid, CardPurpleDark)
     )
 
+    fun getTextColorForCard(colorInt: Int): Color {
+        val color = Color(colorInt)
+
+        return when {
+            // Yellow and Green cards use dark text for contrast
+            isCloseToColor(color, CardYellowLight) || isCloseToColor(color, CardYellowMid) || isCloseToColor(color, CardYellowDark) -> TextDark
+            isCloseToColor(color, CardGreenLight) || isCloseToColor(color, CardGreenMid) || isCloseToColor(color, CardGreenDark) -> TextDark
+            // All other cards use white text
+            else -> Color.White
+        }
+    }
+
     // Helper function to check if a color is close to the target (within tolerance)
     private fun isCloseToColor(color: Color, target: Color, tolerance: Int = 10): Boolean {
         val c = color.toArgb()
