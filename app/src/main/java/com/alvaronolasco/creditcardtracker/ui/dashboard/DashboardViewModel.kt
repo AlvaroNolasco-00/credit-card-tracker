@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
+import com.alvaronolasco.creditcardtracker.data.repository.UserPreferencesRepository
 import com.alvaronolasco.creditcardtracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -37,12 +38,15 @@ data class DashboardUiState(
     val promptDismissedMonth: String? = null,
     val isLoading: Boolean = true,
     val selectedCardIndex: Int = 0,
-    val recentExpenses: List<ExpenseWithCategories> = emptyList()
+    val recentExpenses: List<ExpenseWithCategories> = emptyList(),
+    val userName: String? = null,
+    val showNamePrompt: Boolean = false
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val repository: CreditCardRepository
+    private val repository: CreditCardRepository,
+    private val userPrefs: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -53,6 +57,28 @@ class DashboardViewModel @Inject constructor(
     init {
         loadDashboard()
         loadRecentExpenses()
+        loadUserName()
+    }
+
+    private fun loadUserName() {
+        userPrefs.userName
+            .onEach { name ->
+                _uiState.update {
+                    it.copy(
+                        userName = name,
+                        showNamePrompt = name.isNullOrBlank()
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    fun saveName(name: String) {
+        userPrefs.saveName(name)
+    }
+
+    fun dismissNamePrompt() {
+        _uiState.update { it.copy(showNamePrompt = false) }
     }
 
     fun selectCard(index: Int) {

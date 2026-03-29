@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.di
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.alvaronolasco.creditcardtracker.data.AppDatabase
 import com.alvaronolasco.creditcardtracker.data.dao.*
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
@@ -45,6 +46,11 @@ object AppModule {
 
     @Provides
     fun provideIncomeDao(database: AppDatabase): IncomeDao = database.incomeDao()
+
+    @Provides
+    @Singleton
+    fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences =
+        context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
     @Provides
     @Singleton
