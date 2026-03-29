@@ -35,12 +35,10 @@ fun Navigation() {
                 onAddCard = { navController.navigate("add_card") },
                 onCardClick = { cardId -> navController.navigate("edit_card/$cardId") },
                 onAddExpense = { cardId -> navController.navigate("add_expense/$cardId") },
-                onHistoryClick = { cardId -> navController.navigate("expense_history/$cardId") },
-                onSettingsClick = { /* Settings later */ },
                 onIncomeClick = { navController.navigate("income_setup") },
-                onAddIncome = { navController.navigate("add_income") },
                 onCameraOpen = { navController.navigate("camera_preview") },
-                onSearchClick = { navController.navigate("search_expenses") }
+                onSearchClick = { navController.navigate("search_expenses") },
+                onExpenseClick = { expenseId -> navController.navigate("edit_expense/$expenseId") }
             )
         }
 

@@ -39,6 +39,8 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-020](architecture/ADR-020-broadcast-widget-update.md) | Actualización de widget via broadcast en lugar de corrutinas | architecture | Aceptado | 2026-03-28 |
 | [ADR-021](ui/ADR-021-split-balance-post-cutoff.md) | División de saldo en dos períodos cuando el corte ya ocurrió | ui | Aceptado | 2026-03-28 |
 | [ADR-022](ui/ADR-022-pay-balance-button.md) | Botón "Pagar Saldo" para liquidar el saldo del corte | ui | Aceptado | 2026-03-28 |
+| [ADR-023](ui/ADR-023-change-card-in-expense.md) | Selector de tarjeta destino en AddExpenseScreen | ui | Aceptado | 2026-03-29 |
+| [ADR-024](ui/ADR-024-cut-period-horizontal-layout.md) | Reorganización horizontal del saldo en tarjetas con corte activo | ui | Aceptado | 2026-03-29 |
 
 ## Regla de escritura
 

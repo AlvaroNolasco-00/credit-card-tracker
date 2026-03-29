@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
         IncomeProfile::class,
         IncomeEntry::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +36,17 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE credit_cards ADD COLUMN lastPaymentDate INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE credit_cards ADD COLUMN partialPaymentAmount REAL NOT NULL DEFAULT 0.0"
+                )
+                database.execSQL(
+                    "ALTER TABLE credit_cards ADD COLUMN partialPaymentCycleEnd INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
@@ -70,7 +81,7 @@ abstract class AppDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_6_7)
+                .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

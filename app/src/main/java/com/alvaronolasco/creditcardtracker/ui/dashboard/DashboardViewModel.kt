@@ -21,6 +21,7 @@ data class CardDashboardState(
     val cutOffHappenedThisMonth: Boolean = false,
     val isPaidThisCycle: Boolean = false,
     val extraFinancingPayment: Double = 0.0,
+    val partiallyPaidAmount: Double = 0.0,
     val daysUntilCutOff: Int = 0,
     val daysUntilPayment: Int = 0,
     val cutOffDateLabel: String = ""
@@ -72,6 +73,7 @@ class DashboardViewModel @Inject constructor(
                     if (cutHappened) {
                         val (prevStart, prevEnd) = DateUtils.getPreviousPeriodRange(card.cutOffDay)
                         val isPaid = card.lastPaymentDate > prevEnd
+                        val effectivePartial = if (!isPaid && card.partialPaymentCycleEnd == prevEnd) card.partialPaymentAmount else 0.0
                         val prevFlow = repository.getTotalSpentInPeriod(card.id, prevStart, prevEnd)
                         combine(currentFlow, prevFlow) { current, prev ->
                             CardDashboardState(
@@ -81,6 +83,7 @@ class DashboardViewModel @Inject constructor(
                                 cutOffHappenedThisMonth = true,
                                 isPaidThisCycle = isPaid,
                                 extraFinancingPayment = card.extraFinancingPayment,
+                                partiallyPaidAmount = effectivePartial,
                                 daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
                                 daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
                                 cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
@@ -154,7 +157,37 @@ class DashboardViewModel @Inject constructor(
 
     fun payBalance(card: CreditCard) {
         viewModelScope.launch {
-            repository.updateCard(card.copy(lastPaymentDate = System.currentTimeMillis()))
+            repository.updateCard(
+                card.copy(
+                    lastPaymentDate = System.currentTimeMillis(),
+                    partialPaymentAmount = 0.0,
+                    partialPaymentCycleEnd = 0L
+                )
+            )
+        }
+    }
+
+    fun payPartial(state: CardDashboardState, amount: Double) {
+        viewModelScope.launch {
+            val totalDue = state.cutPeriodTotal + state.extraFinancingPayment
+            val newPaid = state.partiallyPaidAmount + amount
+            if (newPaid >= totalDue) {
+                repository.updateCard(
+                    state.card.copy(
+                        lastPaymentDate = System.currentTimeMillis(),
+                        partialPaymentAmount = 0.0,
+                        partialPaymentCycleEnd = 0L
+                    )
+                )
+            } else {
+                val (_, prevEnd) = DateUtils.getPreviousPeriodRange(state.card.cutOffDay)
+                repository.updateCard(
+                    state.card.copy(
+                        partialPaymentAmount = newPaid,
+                        partialPaymentCycleEnd = prevEnd
+                    )
+                )
+            }
         }
     }
 

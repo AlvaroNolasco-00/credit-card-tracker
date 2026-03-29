@@ -8,6 +8,7 @@ import androidx.navigation.NavController
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -69,11 +70,15 @@ fun AddExpenseScreen(
     var msiMonths by remember { mutableStateOf(3) }
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var selectedCardId by remember { mutableStateOf(cardId) }
+    var showCardPicker by remember { mutableStateOf(false) }
 
     val isEditMode = expenseId != null
 
     LaunchedEffect(cardId) {
-        if (!isEditMode && cardId > 0) viewModel.loadCard(cardId)
+        if (!isEditMode && cardId > 0) {
+            selectedCardId = cardId
+        }
     }
 
     LaunchedEffect(expenseId) {
@@ -89,12 +94,17 @@ fun AddExpenseScreen(
             selectedCategoryIds = ewc.categories.map { it.id }.toSet()
             capturedImageUri = ewc.expense.receiptImagePath?.let { Uri.parse(it) }
             selectedDateMillis = ewc.expense.date
+            selectedCardId = ewc.expense.cardId
             viewModel.loadCard(ewc.expense.cardId)
             if (ewc.expense.msiMonths > 1) {
                 msiEnabled = true
                 msiMonths = ewc.expense.msiMonths
             }
         }
+    }
+
+    LaunchedEffect(selectedCardId) {
+        if (selectedCardId > 0) viewModel.loadCard(selectedCardId)
     }
 
     val context = LocalContext.current
@@ -167,7 +177,67 @@ fun AddExpenseScreen(
             verticalArrangement = Arrangement.spacedBy(Dimensions.SpacingMd)
         ) {
             uiState.currentCard?.let { card ->
-                CardTargetBanner(card)
+                CardTargetBanner(card, onClick = { showCardPicker = true })
+            }
+
+            if (showCardPicker) {
+                AlertDialog(
+                    onDismissRequest = { showCardPicker = false },
+                    title = { Text("Cambiar tarjeta") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            uiState.allCards.forEach { card ->
+                                val isSelected = card.id == selectedCardId
+                                TextButton(
+                                    onClick = {
+                                        selectedCardId = card.id
+                                        showCardPicker = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = if (isSelected)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = card.name,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                            Text(
+                                                text = "${card.bank} · **** ${card.lastFourDigits}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (isSelected) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(10.dp)
+                                                    .background(
+                                                        color = Color(card.color),
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { showCardPicker = false }) { Text("Cancelar") }
+                    }
+                )
             }
 
             AppTextField(
@@ -357,7 +427,7 @@ fun AddExpenseScreen(
                 text = if (isEditMode) "Actualizar Gasto" else "Guardar Gasto",
                 onClick = {
                     viewModel.saveExpense(
-                        cardId = cardId,
+                        cardId = selectedCardId,
                         amount = amount.toDoubleOrNull() ?: 0.0,
                         description = description,
                         categoryIds = selectedCategoryIds.toList(),
@@ -468,7 +538,7 @@ private fun MsiSection(
 }
 
 @Composable
-private fun CardTargetBanner(card: CreditCard) {
+private fun CardTargetBanner(card: CreditCard, onClick: () -> Unit) {
     val cardColor = Color(card.color)
     val darkColor = Color(
         red = (cardColor.red * 0.65f).coerceIn(0f, 1f),
@@ -483,6 +553,7 @@ private fun CardTargetBanner(card: CreditCard) {
                 brush = Brush.horizontalGradient(listOf(cardColor, darkColor)),
                 shape = RoundedCornerShape(16.dp)
             )
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -500,6 +571,12 @@ private fun CardTargetBanner(card: CreditCard) {
                     text = "**** ${card.lastFourDigits}",
                     fontSize = 10.sp,
                     color = Color.White.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Cambiar",
+                    fontSize = 10.sp,
+                    color = Color.White.copy(alpha = 0.9f)
                 )
             }
             Spacer(Modifier.weight(1f))

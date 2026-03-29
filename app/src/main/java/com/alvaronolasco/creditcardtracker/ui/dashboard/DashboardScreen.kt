@@ -20,10 +20,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,12 +41,10 @@ fun DashboardScreen(
     onAddCard: () -> Unit,
     onCardClick: (Int) -> Unit,
     onAddExpense: (Int) -> Unit,
-    onHistoryClick: (Int) -> Unit,
-    onSettingsClick: () -> Unit,
     onIncomeClick: () -> Unit,
-    onAddIncome: () -> Unit,
     onCameraOpen: () -> Unit,
     onSearchClick: () -> Unit,
+    onExpenseClick: (Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -220,12 +220,12 @@ fun DashboardScreen(
                     if (selectedCard != null &&
                         selectedCard.cutOffHappenedThisMonth &&
                         !selectedCard.isPaidThisCycle &&
-                        (selectedCard.cutPeriodTotal + selectedCard.extraFinancingPayment) > 0.0
+                        (selectedCard.cutPeriodTotal + selectedCard.extraFinancingPayment - selectedCard.partiallyPaidAmount) > 0.0
                     ) {
                         item {
                             PayBalanceCard(
                                 state = selectedCard,
-                                onConfirmPay = { viewModel.payBalance(selectedCard.card) },
+                                onConfirmPay = { amount -> viewModel.payPartial(selectedCard, amount) },
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -293,6 +293,7 @@ fun DashboardScreen(
                         items(uiState.recentExpenses) { ewc ->
                             TransactionItem(
                                 expenseWithCategories = ewc,
+                                onClick = { onExpenseClick(ewc.expense.id) },
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
                             )
                         }
@@ -352,24 +353,28 @@ fun CreditCardPagerItem(
                 Spacer(Modifier.height(14.dp))
 
                 // Saldo and Límite
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    if (state.cutOffHappenedThisMonth) {
-                        Column {
+                if (state.cutOffHappenedThisMonth) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Saldo del corte",
+                                "Saldo corte",
                                 color = cardTextColor.copy(alpha = 0.65f),
                                 fontSize = 10.sp
                             )
                             Text(
                                 "$${String.format("%,.2f", state.cutPeriodTotal + state.extraFinancingPayment)}",
                                 color = cardTextColor,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            Spacer(Modifier.height(4.dp))
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(
                                 "Período actual",
                                 color = cardTextColor.copy(alpha = 0.65f),
@@ -378,11 +383,32 @@ fun CreditCardPagerItem(
                             Text(
                                 "$${String.format("%,.2f", state.totalSpent)}",
                                 color = cardTextColor,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                    } else {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(
+                                "Límite",
+                                color = cardTextColor.copy(alpha = 0.65f),
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                "$${String.format("%,.2f", state.card.creditLimit)}",
+                                color = cardTextColor,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Column {
                             Text(
                                 "Saldo",
@@ -403,19 +429,19 @@ fun CreditCardPagerItem(
                                 )
                             }
                         }
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            "Limite",
-                            color = cardTextColor.copy(alpha = 0.65f),
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            "$${String.format("%,.2f", state.card.creditLimit)}",
-                            color = cardTextColor,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                "Límite",
+                                color = cardTextColor.copy(alpha = 0.65f),
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                "$${String.format("%,.2f", state.card.creditLimit)}",
+                                color = cardTextColor,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
@@ -512,27 +538,79 @@ fun CardInfoRow(
 @Composable
 fun PayBalanceCard(
     state: CardDashboardState,
-    onConfirmPay: () -> Unit,
+    onConfirmPay: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val amountDue = state.cutPeriodTotal + state.extraFinancingPayment
+    val totalDue = state.cutPeriodTotal + state.extraFinancingPayment
+    val remaining = (totalDue - state.partiallyPaidAmount).coerceAtLeast(0.0)
 
     if (showDialog) {
+        var amountText by remember(remaining) { mutableStateOf(String.format("%.2f", remaining)) }
+        val amountValue = amountText.replace(",", ".").toDoubleOrNull() ?: 0.0
+        val isValid = amountValue > 0.0 && amountValue <= remaining
+
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Confirmar pago") },
+            title = { Text("Registrar pago — ${state.card.name}") },
             text = {
-                Text(
-                    "¿Deseas marcar como pagado el saldo de corte de $${String.format("%,.2f", amountDue)} de la tarjeta ${state.card.name}?"
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (state.partiallyPaidAmount > 0.0) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Ya abonado",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "$${String.format("%,.2f", state.partiallyPaidAmount)}",
+                                fontSize = 13.sp,
+                                color = Color(0xFF4CAF50),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Pendiente",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "$${String.format("%,.2f", remaining)}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = { amountText = it },
+                        label = { Text("Monto a pagar") },
+                        prefix = { Text("$") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = amountText.isNotEmpty() && !isValid,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    showDialog = false
-                    onConfirmPay()
-                }) {
-                    Text("Pagar", color = Color(0xFF2E7D32))
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        onConfirmPay(amountValue.coerceAtMost(remaining))
+                    },
+                    enabled = isValid
+                ) {
+                    Text("Confirmar", color = if (isValid) Color(0xFF2E7D32) else Color.Gray)
                 }
             },
             dismissButton = {
@@ -570,16 +648,23 @@ fun PayBalanceCard(
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Saldo a pagar",
+                    if (state.partiallyPaidAmount > 0.0) "Saldo pendiente" else "Saldo a pagar",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "$${String.format("%,.2f", amountDue)}",
+                    "$${String.format("%,.2f", remaining)}",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                if (state.partiallyPaidAmount > 0.0) {
+                    Text(
+                        "Abonado: $${String.format("%,.2f", state.partiallyPaidAmount)}",
+                        fontSize = 11.sp,
+                        color = Color(0xFF4CAF50)
+                    )
+                }
             }
             Button(
                 onClick = { showDialog = true },
@@ -659,6 +744,7 @@ fun InfoChip(
 @Composable
 fun TransactionItem(
     expenseWithCategories: ExpenseWithCategories,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val expense = expenseWithCategories.expense
@@ -667,7 +753,7 @@ fun TransactionItem(
         .ifEmpty { null }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 0.dp,

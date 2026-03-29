@@ -69,10 +69,14 @@ dependencies {
     ksp("androidx.room:room-compiler:$roomVersion")
 
     // Hilt
-    val hiltVersion = "2.50"
+    val hiltVersion = "2.51.1"
     implementation("com.google.dagger:hilt-android:$hiltVersion")
     ksp("com.google.dagger:hilt-android-compiler:$hiltVersion")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    
+    // Hilt Testing (added to avoid configuration mutation errors)
+    androidTestImplementation("com.google.dagger:hilt-android-testing:$hiltVersion")
+    kspAndroidTest("com.google.dagger:hilt-android-compiler:$hiltVersion")
 
     // CameraX
     val cameraxVersion = "1.3.1"

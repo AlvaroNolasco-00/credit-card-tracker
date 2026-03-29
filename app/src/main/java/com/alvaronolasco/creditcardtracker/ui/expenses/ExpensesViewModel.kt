@@ -25,7 +25,8 @@ data class ExpensesUiState(
     val ocrResultAmount: Double? = null,
     val ocrProcessing: Boolean = false,
     val currentExpense: ExpenseWithCategories? = null,
-    val currentCard: CreditCard? = null
+    val currentCard: CreditCard? = null,
+    val allCards: List<CreditCard> = emptyList()
 )
 
 @HiltViewModel
@@ -41,6 +42,14 @@ class ExpensesViewModel @Inject constructor(
 
     init {
         loadCategories()
+        loadAllCards()
+    }
+
+    private fun loadAllCards() {
+        repository.getAllCards()
+            .onEach { cards ->
+                _uiState.update { it.copy(allCards = cards) }
+            }.launchIn(viewModelScope)
     }
 
     private fun loadCategories() {
