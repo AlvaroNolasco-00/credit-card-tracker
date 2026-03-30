@@ -28,23 +28,24 @@ Run a single test class:
 **MVVM + Clean Architecture** with three layers:
 
 ### Data Layer (`data/`)
-- **Room DB** (version 2, `fallbackToDestructiveMigration`): 6 entities — `CreditCard`, `Expense`, `Category`, `NotificationConfig`, `IncomeProfile`, `IncomeEntry`
-- **DAOs** return `Flow<T>` for reactive queries
+- **Room DB** (version 8, migrations via `MIGRATION_6_7` / `MIGRATION_7_8`, `fallbackToDestructiveMigration` as safety net): 7 entities — `CreditCard`, `Expense`, `Category`, `ExpenseCategory` (junction), `NotificationConfig`, `IncomeProfile`, `IncomeEntry`
+- **DAOs** return `Flow<T>` for reactive queries — see `data/dao/`
 - **`CreditCardRepository`** is the single data access point, aggregating all DAOs
+- **`UserPreferencesRepository`** manages SharedPreferences (user name, etc.) via `StateFlow`
 - Default categories (Entretenimiento, Transporte, Comida, Medicina) are seeded on first DB creation
 
 ### Presentation Layer (`ui/`)
 - Jetpack Compose + Material 3
 - Each feature folder contains a `*Screen.kt` (composable) and a `*ViewModel.kt`
-- Navigation is centralized in `ui/navigation/Navigation.kt` (single `NavHost`)
-- Reusable design-system components live in `ui/components/` (`AppButton`, `AppCard`, `AppTextField`, `AppTopBar`, etc.)
+- Navigation is centralized in `ui/navigation/Navigation.kt` (single `NavHost`) — see that file for the full route list
+- Reusable design-system components live in `ui/components/` (`AppButton`, `AppCard`, `AppTextField`, `AppTopBar`, `AppChip`, `AppLoadingIndicator`, `EmptyStateView`)
 - Theme defined in `ui/theme/` (Color, Type, Shape, Dimensions)
 
 ### Cross-Cutting Modules
-- **DI** (`di/AppModule.kt`): Hilt `@Singleton` provides `AppDatabase` and `CreditCardRepository`
+- **DI** (`di/AppModule.kt`): Hilt `@Singleton` provides `AppDatabase`, `CreditCardRepository`, `UserPreferencesRepository`, `SharedPreferences`, and a `CoroutineScope` with `SupervisorJob`
 - **OCR** (`ocr/OcrProcessor.kt`): ML Kit Text Recognition. Uses a 4-tier detection strategy — keyword match → positional heuristic → last-section scan → max-amount fallback. Returns a confidence level (HIGH/MEDIUM/LOW/NONE).
-- **Notifications** (`notifications/`): `ReminderScheduler` creates exact alarms; `ReminderReceiver` fires them; `BootReceiver` reschedules after device reboot.
-- **Widget** (`widget/`): Glance-based home screen widget showing card summary.
+- **Notifications** (`notifications/`): `ReminderScheduler` creates exact alarms; `ReminderReceiver` fires them; `BootReceiver` reschedules after reboot; `NotificationHelper` manages channel creation and display.
+- **Widget** (`widget/`): Glance-based home screen widget. `WidgetDeepLink` is a singleton `StateFlow`-based handler for navigating into the app from widget taps.
 
 ## Key Conventions
 
@@ -55,33 +56,23 @@ Run a single test class:
 
 ## ADR System
 
-All significant decisions **must** be documented in `docs/adr/` before or immediately after implementation.
+All significant decisions **must** be documented in `docs/adr/` before or immediately after implementation. See [docs/adr/INDEX.md](docs/adr/INDEX.md) for the full list of decisions.
 
 ### When to write an ADR
 
-Write an ADR whenever you:
 - Add or change a feature visible to the user (UI, widget, navigation)
 - Change an entity field, DAO query, or repository method
 - Introduce a new cross-cutting pattern or singleton
 - Change a build config, SDK version, or manifest attribute with behavioral impact
 - Make a decision where two or more approaches were considered
 
-### File naming and location
+### File naming: `docs/adr/<category>/ADR-NNN-slug.md`
 
-```
-docs/adr/
-  INDEX.md                          ← master index (always update)
-  widget/     ADR-NNN-slug.md       ← Glance widget changes
-  ui/         ADR-NNN-slug.md       ← screens, composables, theme
-  data/       ADR-NNN-slug.md       ← Room entities, DAOs, repository
-  navigation/ ADR-NNN-slug.md       ← routes, NavHost, deep links
-  architecture/ ADR-NNN-slug.md     ← cross-cutting patterns, DI, singletons
-```
+Categories: `widget/`, `ui/`, `data/`, `navigation/`, `architecture/`
 
-- IDs are sequential and global (`ADR-001`, `ADR-002`, …). Never reuse an ID.
-- Slug is lowercase-kebab-case describing the decision, not the ticket.
+IDs are sequential and global (never reuse). Slug is lowercase-kebab-case. Always update `INDEX.md`.
 
-### Mandatory ADR sections
+### Mandatory sections
 
 ```markdown
 # ADR-NNN: Title
@@ -95,7 +86,7 @@ docs/adr/
 ## Consecuencias
 ```
 
-If a decision is later reversed, mark the old ADR **Supersedido por ADR-XXX** and create a new one; never delete or rewrite past ADRs.
+To supersede a decision: mark the old ADR **Supersedido por ADR-XXX**, create a new one — never delete or rewrite past ADRs.
 
 ## Import Rules
 
