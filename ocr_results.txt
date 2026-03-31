@@ -1,0 +1,212 @@
+
+=== images/20260330_232542.jpg ===
+BAC
+CREDOMATIC
+SW: CCREKPS020309 REV. 101025
+TEXACO RUTA MILITAR
+RUMBO SUR ESTE KM 138 CAR RUTA
+MILITAR SAL A SIA ROSA DE LIMA
+TERMINAL ID P0721698
+000000083462175
+COMPRA
+314
+*****
+HH
+VISA
+AUTO: 745432
+REF.: 02701469
+TOTAL
+****
+*** 1400-L
+FACT: 017958
+FEB 08, 26 - 23:09
+$15.00
+A000000003 1010
+4448DD953A03A 165
+SON
+NO REQUIERE FIRMA
+.- Visa Credit-
+A ID
+ARQC:
+*
+UR-EST
+COPIA DE CLIENTE *•
+USTIDLES, LUBRICANTE
+OTROS
+
+=== images/20260330_232614.jpg ===
+-0T-827F-7567-3191-76067633221
+000000000029873
+********
+ERROR
+Favor
+de corregir
+antes de emitir a MH:
+I] DOCUMENTO NO CUMPLE ESQUEMA JSON
+*****************************************
+**
+GrupoRVO
+**
+** RAMIREZ VENTURA, S.A. DE
+.C.V **
+TEXACO RUTA MILITAR
+DIR: CARR RUMBO A RUTA MILITAR SUR-ESTE CT
+ON ZAMORA, SAN MIGUEL, SAN MIGUEL
+NRC: 125639-2
+NIT: 0614-190900-103-4
+GIRO: VENTA DE COMBUSTIBLES, LUBRICANTES Y
+OTROS (GASOLINERAS)
+*************************
+*****************
+***
+DATOS DEL CLIENTE
+***
+NRC: 05596265-5
+NIT:
+NOMBRE: ALVARO ALCIDES GUANDIQUE NOLASCO
+DIR: residencial terranova polig. 10 casa
+6, san miguel, san miguel.
+TEL: 76363656
+CORREO: alvaro_guandique@hotmail.com
+******************************************
+NO ES UN DOCUMENTO FISCAL
+PARA CONSULTAS ESCRIBE AL CORRED
+soporte, dte@gruporvq.com
+2522-8849
+*‡****¢**¢¢******************************
+08/02/2026 23:12:26
+TIPO DOC: FAC
+#NO_UNICO: 1787404
+EMPLEADO: 120
+CAJA: 1
+TOTAL: $15.00
+## FORMAS DE PAGO ##
+BAC: $15.00
+Documento DIE
+VO.4.0.9
+
+=== images/20260330_232709.jpg ===
+BARBOTAS SAN MIGU
+NIT : 0503-270616-101-2 NCR : 252813-0
+AGUIDEL, S.A. DE C.V.
+GIRO : Peluqueria y otros tratamientos de
+belleza
+Carr. Panamericana y calle antigua a
+Quelepa, C.C. El Encuentro El Sitio San
+Miguel, Local # 46
+Tel. : 26712084
+Fecha / hora: 20:20 17-12-2025
+Id Control: 286500
+Cliente : ALVARO ALCIDES GUANDIQUE
+NOLASCO
+FACTURA
+CG : DDD8236F-0FCA-49C9-8F1E*
+OFAAABA17954
+NC : DTE-01-S003P001-000000000011068
+SR:
+202536E659FA4F354306AFAB3D33777A17A0MVR9
+C. Descrip.
+P.U.
+Total
+• 1
+CORTE DE CABELLO
+ADULTO
+9
+9.00G
+G = GRAVADO E = EXENTO
+SUMAS $
+EXENTO $
+GRAVADO $
+VENTAS NO SUJETAS $
+TOTAL $
+EFECTIVO $
+CAMBIO $
+9.00
+0.00
+9.00
+0.00
+9.00
+10.00
+1.00
+ALVARO ALCIDES GUANDIQUE
+NOLASCO, 76363656
+SAN MIGUEL, San Miguel, San Miguel
+Usted tiene 5 puntos acumulados
+GRACIAS POR SU COMPRA
+
+=== images/20260330_232740.jpg ===
+Correlatiyr
+Nombr
+Cor
+arte
+00059820
+sumidor Final
+Dec-
+a99999
+Identidad:
+Recepción: Emperatriz
+ALVARO
+CB JR BACON
+JR. BACON
+Normal
+PAPA FRITA REGULAR
+PEPSI 16oz
+CB BIG BACON
+BIG BACON
+Premium Bun
+Normal
+CHILI C/CAR MED
+PEPSI 16oz
+Sub-total
+AQUI Total
+CREDOMATIC
+29/01/2026
+10:10 PM
+30164
+5.50
+7.75
+1.50
+14.75
+14.75
+$14.75
+Consecutivo:
+00700003040000059820
+Clave:
+50329012600310159361700700003040000
+059820300059820
+SON: CATORCE CON 75/100 DOLARES
+
+=== images/20260330_232806.jpg ===
+O CUSCATLAN
+BANCO CUSCATLAN
+UNO CARROUSEL
+30/03/2026 21:19
+No. TARJETA:
+VISA CREDITO
+TOTAL
+$
+AUT: 192527
+4366 89** ****5668
+AID: A0000000031010
+31.00
+
+=== images/Screenshot_20260330_233031_Messages.jpg ===
+20:40
+Alertas PRF AMEX 0486: has realizado
+una compra por USD 0.50 en el comercio:
+EST EL ENCUENTRO EL 2026/03/30
+20:08:48 Inf. https://bit.ly/32mcTdq
+C
+Presiona para cargar la vista previa
+20:40
+Mensaje de texto
+
+=== images/Screenshot_20260330_233037_Messages.jpg ===
+21:19
+Alerta de compra B.CUSCATLAN con su
+Tarjeta de Credito Adicional 2448 por
+USD31.00 en UNO CARROUSEL el
+2026-03-30 21:19. Mas inf. 22122000
+21:19
+No puedes responder a este código corto.
+Más información

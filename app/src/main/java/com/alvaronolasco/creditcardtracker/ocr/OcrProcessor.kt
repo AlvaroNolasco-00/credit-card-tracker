@@ -48,14 +48,18 @@ class AmountDetector {
         "total", "total a pagar", "monto total", "importe total",
         "gran total", "neto", "amount due", "balance due",
         "monto", "importe", "a pagar", "cobro", "cargo total",
-        "amount", "net total", "grand total", "sum", "due", "pay"
+        "amount", "net total", "grand total", "sum", "due", "pay",
+        "compra por", "consumo", "pagado", "pago", "por usd", "por mxn", "usd", "mxn", "eur"
     )
 
     // Regex to match currency amounts:
-    // Support symbols: $, Q, L, €, etc.
+    // Support symbols: $, Q, L, €, etc., and codes like USD, MXN
     // Support thousands separators: 1,234.56 or 1.234,56
     // Support no decimals: $100
-    private val amountRegex = Regex("""([$€£¥₣₹]|Q|L|HNL|GTQ)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+)\b""")
+    private val amountRegex = Regex(
+        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\b""",
+        RegexOption.IGNORE_CASE
+    )
 
     private val phonePatterns = listOf(
         Regex("""(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{4}"""),  // Phone formats
@@ -106,14 +110,35 @@ class AmountDetector {
 
     private fun findByKeywords(text: String): Double? {
         val lines = text.split("\n")
+        val reversedLines = lines.asReversed()
+
         // Search bottom-up: last occurrence of a keyword is more likely the final total
         totalKeywords.forEach { keyword ->
-            lines.asReversed().forEach { line ->
+            reversedLines.forEachIndexed { i, line ->
                 if (line.contains(keyword, ignoreCase = true)) {
-                    val match = amountRegex.find(line.substring(line.indexOf(keyword, ignoreCase = true)))
+                    // Try to find amount on the same line
+                    val substring = line.substring(line.indexOf(keyword, ignoreCase = true))
+                    val match = amountRegex.find(substring)
+                    
                     if (match != null && !looksLikeNonMonetary(match.value)) {
                         parseAmount(match.groupValues[2])?.let { 
                             if (it > 0.0) return it 
+                        }
+                    }
+
+                    // If not found on the same line, check the next few lines (which are visually "below" on the receipt)
+                    // The "below" lines are the previous indices in the reversed list.
+                    // Loop from i - 1 down to i - 5
+                    val startSearch = maxOf(0, i - 5)
+                    for (j in (i - 1 downTo startSearch)) {
+                        val nextLine = reversedLines[j]
+                        val nextMatches = amountRegex.findAll(nextLine)
+                        for (nextMatch in nextMatches) {
+                            if (!looksLikeNonMonetary(nextMatch.value)) {
+                                parseAmount(nextMatch.groupValues[2])?.let {
+                                    if (it > 0.0) return it
+                                }
+                            }
                         }
                     }
                 }
