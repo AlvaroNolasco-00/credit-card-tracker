@@ -25,6 +25,9 @@ import com.alvaronolasco.creditcardtracker.ui.components.AppChip
 import com.alvaronolasco.creditcardtracker.ui.components.AppTopBar
 import com.alvaronolasco.creditcardtracker.ui.components.EmptyStateView
 import com.alvaronolasco.creditcardtracker.ui.theme.*
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -42,8 +45,39 @@ fun ExpenseSearchScreen(
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
-    val startPickerState = rememberDatePickerState(initialSelectedDateMillis = uiState.startDate)
-    val endPickerState = rememberDatePickerState(initialSelectedDateMillis = uiState.endDate)
+
+    val zoneId = ZoneId.systemDefault()
+    val today = LocalDate.now(zoneId)
+    val todayStartMillis = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
+
+    val selectableDates = remember(zoneId, today) {
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                val localDate = Instant.ofEpochMilli(utcTimeMillis)
+                    .atZone(zoneId)
+                    .toLocalDate()
+                return !localDate.isAfter(today) // today and past only
+            }
+
+            override fun isSelectableYear(year: Int): Boolean = year <= today.year
+        }
+    }
+
+    fun clampToNonFuture(millis: Long): Long {
+        val localDate = Instant.ofEpochMilli(millis)
+            .atZone(zoneId)
+            .toLocalDate()
+        return if (localDate.isAfter(today)) todayStartMillis else millis
+    }
+
+    val startPickerState = rememberDatePickerState(
+        initialSelectedDateMillis = clampToNonFuture(uiState.startDate),
+        selectableDates = selectableDates
+    )
+    val endPickerState = rememberDatePickerState(
+        initialSelectedDateMillis = clampToNonFuture(uiState.endDate),
+        selectableDates = selectableDates
+    )
 
     // Preset ranges
     val presets = listOf(
@@ -256,18 +290,36 @@ fun ExpenseSearchScreen(
         DatePickerDialog(
             onDismissRequest = { showStartDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    startPickerState.selectedDateMillis?.let { millis ->
-                        viewModel.onDateRangeChange(millis, uiState.endDate)
-                    }
-                    showStartDatePicker = false
-                }) { Text("OK") }
+                TextButton(
+                    onClick = {
+                        startPickerState.selectedDateMillis?.let { millis ->
+                            viewModel.onDateRangeChange(millis, uiState.endDate)
+                        }
+                        showStartDatePicker = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showStartDatePicker = false }) { Text("Cancelar") }
+                TextButton(
+                    onClick = { showStartDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) { Text("Cancelar") }
             }
         ) {
-            DatePicker(state = startPickerState)
+            DatePicker(
+                state = startPickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = MaterialTheme.colorScheme.secondary,
+                    selectedDayContentColor = MaterialTheme.colorScheme.onSecondary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.secondary,
+                    todayContentColor = MaterialTheme.colorScheme.secondary
+                )
+            )
         }
     }
 
@@ -275,19 +327,37 @@ fun ExpenseSearchScreen(
         DatePickerDialog(
             onDismissRequest = { showEndDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    endPickerState.selectedDateMillis?.let { millis ->
-                        // Set end to end of that day
-                        viewModel.onDateRangeChange(uiState.startDate, millis + DAY_MS - 1)
-                    }
-                    showEndDatePicker = false
-                }) { Text("OK") }
+                TextButton(
+                    onClick = {
+                        endPickerState.selectedDateMillis?.let { millis ->
+                            // Set end to end of that day
+                            viewModel.onDateRangeChange(uiState.startDate, millis + DAY_MS - 1)
+                        }
+                        showEndDatePicker = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showEndDatePicker = false }) { Text("Cancelar") }
+                TextButton(
+                    onClick = { showEndDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) { Text("Cancelar") }
             }
         ) {
-            DatePicker(state = endPickerState)
+            DatePicker(
+                state = endPickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = MaterialTheme.colorScheme.secondary,
+                    selectedDayContentColor = MaterialTheme.colorScheme.onSecondary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.secondary,
+                    todayContentColor = MaterialTheme.colorScheme.secondary
+                )
+            )
         }
     }
 }

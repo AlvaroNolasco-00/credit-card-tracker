@@ -111,11 +111,17 @@ class AmountDetector {
     private fun findByKeywords(text: String): Double? {
         val lines = text.split("\n")
         val reversedLines = lines.asReversed()
+        val ignoreWords = listOf("precio", "sub", "ahorro", "descuento", "cambio", "su cambio", "vuelto")
 
         // Search bottom-up: last occurrence of a keyword is more likely the final total
         totalKeywords.forEach { keyword ->
             reversedLines.forEachIndexed { i, line ->
                 if (line.contains(keyword, ignoreCase = true)) {
+                    // Skip if the line has words indicating it's not the final total (like 'precio total' or 'sub total')
+                    if (ignoreWords.any { line.contains(it, ignoreCase = true) } && !keyword.contains("sub", ignoreCase = true)) {
+                        return@forEachIndexed // Continue to the next line in reversedLines
+                    }
+
                     // Try to find amount on the same line
                     val substring = line.substring(line.indexOf(keyword, ignoreCase = true))
                     val match = amountRegex.find(substring)
@@ -128,8 +134,8 @@ class AmountDetector {
 
                     // If not found on the same line, check the next few lines (which are visually "below" on the receipt)
                     // The "below" lines are the previous indices in the reversed list.
-                    // Loop from i - 1 down to i - 5
-                    val startSearch = maxOf(0, i - 5)
+                    // Loop from i - 1 down to i - 7 to catch amounts pushed further down by MLKit grouping
+                    val startSearch = maxOf(0, i - 7)
                     for (j in (i - 1 downTo startSearch)) {
                         val nextLine = reversedLines[j]
                         val nextMatches = amountRegex.findAll(nextLine)

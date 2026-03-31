@@ -42,6 +42,8 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-023](ui/ADR-023-change-card-in-expense.md) | Selector de tarjeta destino en AddExpenseScreen | ui | Aceptado | 2026-03-29 |
 | [ADR-024](ui/ADR-024-cut-period-horizontal-layout.md) | Reorganización horizontal del saldo en tarjetas con corte activo | ui | Aceptado | 2026-03-29 |
 | [ADR-025](ui/ADR-025-dynamic-user-name-greeting.md) | Saludo dinámico con nombre de usuario y bottom sheet de configuración | ui | Aceptado | 2026-03-29 |
+| [ADR-026](ui/ADR-026-dialog-button-contrast.md) | Contraste de botones en modales y formularios | ui | Aceptado | 2026-03-31 |
+| [ADR-027](ui/ADR-027-block-future-dates-in-expense-datepicker.md) | Bloquear fechas futuras en DatePicker de gastos | ui | Aceptado | 2026-03-31 |
 
 ## Regla de escritura
 

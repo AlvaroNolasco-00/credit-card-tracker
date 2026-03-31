@@ -43,6 +43,7 @@ import com.alvaronolasco.creditcardtracker.ui.components.*
 import com.alvaronolasco.creditcardtracker.ui.theme.Dimensions
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -137,7 +138,8 @@ fun AddExpenseScreen(
 
     LaunchedEffect(uiState.ocrResultAmount) {
         uiState.ocrResultAmount?.let {
-            amount = it.toString()
+            amount = it.toBigDecimal().stripTrailingZeros().toPlainString()
+                .replace("[^0-9.]".toRegex(), "")
         }
     }
 
@@ -196,7 +198,7 @@ fun AddExpenseScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = if (isSelected)
-                                            MaterialTheme.colorScheme.primary
+                                            MaterialTheme.colorScheme.secondary
                                         else
                                             MaterialTheme.colorScheme.onSurface
                                     )
@@ -235,14 +237,23 @@ fun AddExpenseScreen(
                     },
                     confirmButton = {},
                     dismissButton = {
-                        TextButton(onClick = { showCardPicker = false }) { Text("Cancelar") }
+                        TextButton(
+                            onClick = { showCardPicker = false },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) { Text("Cancelar") }
                     }
                 )
             }
 
             AppTextField(
                 value = amount,
-                onValueChange = { amount = it },
+                onValueChange = { newValue ->
+                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                        amount = newValue
+                    }
+                },
                 label = "Monto ($)",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 textStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black)
@@ -301,20 +312,65 @@ fun AddExpenseScreen(
             }
 
             if (showDatePicker) {
-                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
+                val zoneId = ZoneId.systemDefault()
+                val today = LocalDate.now(zoneId)
+                val todayStartMillis = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
+
+                // If an existing expense has a future date, clamp it so we never keep/submit a future selection.
+                val initialSelectedDateMillis = run {
+                    val selectedLocalDate = Instant.ofEpochMilli(selectedDateMillis)
+                        .atZone(zoneId)
+                        .toLocalDate()
+                    if (selectedLocalDate.isAfter(today)) todayStartMillis else selectedDateMillis
+                }
+
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = initialSelectedDateMillis,
+                    selectableDates = object : SelectableDates {
+                        override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                            val localDate = Instant.ofEpochMilli(utcTimeMillis)
+                                .atZone(zoneId)
+                                .toLocalDate()
+                            return !localDate.isAfter(today) // Allow today and past only.
+                        }
+
+                        override fun isSelectableYear(year: Int): Boolean {
+                            // If the year is after the current year, all its dates are non-selectable.
+                            return year <= today.year
+                        }
+                    }
+                )
                 DatePickerDialog(
                     onDismissRequest = { showDatePicker = false },
                     confirmButton = {
-                        TextButton(onClick = {
-                            datePickerState.selectedDateMillis?.let { selectedDateMillis = it }
-                            showDatePicker = false
-                        }) { Text("Aceptar") }
+                        TextButton(
+                            onClick = {
+                                datePickerState.selectedDateMillis?.let { selectedDateMillis = it }
+                                showDatePicker = false
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) { Text("Aceptar") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) { Text("Cancelar") }
+                        TextButton(
+                            onClick = { showDatePicker = false },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) { Text("Cancelar") }
                     }
                 ) {
-                    DatePicker(state = datePickerState)
+                    DatePicker(
+                        state = datePickerState,
+                        colors = DatePickerDefaults.colors(
+                            selectedDayContainerColor = MaterialTheme.colorScheme.secondary,
+                            selectedDayContentColor = MaterialTheme.colorScheme.onSecondary,
+                            todayDateBorderColor = MaterialTheme.colorScheme.secondary,
+                            todayContentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    )
                 }
             }
 
@@ -345,14 +401,22 @@ fun AddExpenseScreen(
                                 showAddCategoryDialog = false
                                 newCategoryName = ""
                             },
-                            enabled = newCategoryName.isNotBlank()
+                            enabled = newCategoryName.isNotBlank(),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.secondary
+                            )
                         ) { Text("Crear") }
                     },
                     dismissButton = {
-                        TextButton(onClick = {
-                            showAddCategoryDialog = false
-                            newCategoryName = ""
-                        }) { Text("Cancelar") }
+                        TextButton(
+                            onClick = {
+                                showAddCategoryDialog = false
+                                newCategoryName = ""
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) { Text("Cancelar") }
                     }
                 )
             }
@@ -370,7 +434,12 @@ fun AddExpenseScreen(
                         }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
                     },
                     dismissButton = {
-                        TextButton(onClick = { categoryToDelete = null }) { Text("Cancelar") }
+                        TextButton(
+                            onClick = { categoryToDelete = null },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) { Text("Cancelar") }
                     }
                 )
             }
