@@ -40,7 +40,8 @@ data class DashboardUiState(
     val selectedCardIndex: Int = 0,
     val recentExpenses: List<ExpenseWithCategories> = emptyList(),
     val userName: String? = null,
-    val showNamePrompt: Boolean = false
+    val showNamePrompt: Boolean = false,
+    val hasBudgetThisMonth: Boolean = false
 )
 
 @HiltViewModel
@@ -58,6 +59,16 @@ class DashboardViewModel @Inject constructor(
         loadDashboard()
         loadRecentExpenses()
         loadUserName()
+        loadBudgetStatus()
+    }
+
+    private fun loadBudgetStatus() {
+        val currentMonthYear = DateUtils.getCurrentMonthYear()
+        repository.getBudgetItemsForMonth(currentMonthYear)
+            .onEach { items ->
+                _uiState.update { it.copy(hasBudgetThisMonth = items.isNotEmpty()) }
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun loadUserName() {

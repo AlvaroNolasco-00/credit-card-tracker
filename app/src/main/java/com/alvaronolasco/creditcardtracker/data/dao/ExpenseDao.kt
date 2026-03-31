@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.data.dao
 
 import androidx.room.*
+import com.alvaronolasco.creditcardtracker.data.entity.CategorySpending
 import com.alvaronolasco.creditcardtracker.data.entity.Expense
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import kotlinx.coroutines.flow.Flow
@@ -42,4 +43,20 @@ interface ExpenseDao {
     @Transaction
     @Query("SELECT * FROM expenses WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
     fun getAllExpensesWithCategoriesInPeriod(startDate: Long, endDate: Long): Flow<List<ExpenseWithCategories>>
+
+    @Query("""
+        SELECT c.id, c.name, c.icon, c.isDefault, c.createdAt,
+               COALESCE(SUM(CASE WHEN e.msiMonths > 1 THEN e.msiMonthlyAmount ELSE e.amount END), 0) AS totalSpent
+        FROM categories c
+        LEFT JOIN expense_categories ec ON c.id = ec.categoryId
+        LEFT JOIN expenses e ON ec.expenseId = e.id
+            AND (
+                (e.msiMonths <= 1 AND e.date BETWEEN :startDate AND :endDate)
+                OR
+                (e.msiMonths > 1 AND e.date <= :endDate AND e.msiEndDate >= :startDate)
+            )
+        GROUP BY c.id
+        ORDER BY c.isDefault DESC, c.name ASC
+    """)
+    fun getSpendingPerCategory(startDate: Long, endDate: Long): Flow<List<CategorySpending>>
 }

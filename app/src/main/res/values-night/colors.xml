@@ -4,7 +4,7 @@
     <color name="widget_background">#141A16</color>
     <color name="widget_text_primary">#E1E1E1</color>
     <color name="widget_text_secondary">#B0B0B0</color>
-    <color name="widget_income_brand">#2E7D32</color> <!-- Material Dark Green -->
+    <color name="widget_income_brand">#01579B</color> <!-- Material Dark Blue -->
     <color name="widget_income_overlay">#33FFFFFF</color> <!-- 20% white -->
 </resources>
 

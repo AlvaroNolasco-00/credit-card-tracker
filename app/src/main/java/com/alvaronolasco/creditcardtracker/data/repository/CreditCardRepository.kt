@@ -11,7 +11,8 @@ class CreditCardRepository @Inject constructor(
     private val expenseDao: ExpenseDao,
     private val expenseCategoryDao: ExpenseCategoryDao,
     private val configDao: NotificationConfigDao,
-    private val incomeDao: IncomeDao
+    private val incomeDao: IncomeDao,
+    private val budgetDao: BudgetDao
 ) {
     // Cards
     fun getAllCards(): Flow<List<CreditCard>> = cardDao.getAllCards()
@@ -70,4 +71,12 @@ class CreditCardRepository @Inject constructor(
     suspend fun insertIncomeEntry(entry: IncomeEntry) = incomeDao.insertEntry(entry)
     suspend fun updateIncomeEntry(entry: IncomeEntry) = incomeDao.updateEntry(entry)
     suspend fun deleteIncomeEntry(entry: IncomeEntry) = incomeDao.deleteEntry(entry)
+
+    // Budget
+    fun getBudgetItemsForMonth(monthYear: String): Flow<List<BudgetItem>> = budgetDao.getBudgetItemsForMonth(monthYear)
+    suspend fun getBudgetItemForCategory(categoryId: Int, monthYear: String): BudgetItem? = budgetDao.getBudgetItemForCategory(categoryId, monthYear)
+    suspend fun upsertBudgetItem(item: BudgetItem) = budgetDao.upsertBudgetItem(item)
+    suspend fun deleteBudgetItem(item: BudgetItem) = budgetDao.deleteBudgetItem(item)
+    suspend fun copyBudgetFromMonth(sourceMonth: String, targetMonth: String) = budgetDao.copyBudgetFromMonth(sourceMonth, targetMonth)
+    fun getSpendingPerCategory(startDate: Long, endDate: Long): Flow<List<CategorySpending>> = expenseDao.getSpendingPerCategory(startDate, endDate)
 }

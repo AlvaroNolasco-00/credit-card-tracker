@@ -49,6 +49,7 @@ fun DashboardScreen(
     onCardClick: (Int) -> Unit,
     onAddExpense: (Int) -> Unit,
     onIncomeClick: () -> Unit,
+    onBudgetClick: () -> Unit,
     onCameraOpen: () -> Unit,
     onSearchClick: () -> Unit,
     onExpenseClick: (Int) -> Unit,
@@ -260,6 +261,15 @@ fun DashboardScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
+                    }
+
+                    // Budget section
+                    item {
+                        BudgetSectionCard(
+                            hasBudget = uiState.hasBudgetThisMonth,
+                            onTap = onBudgetClick,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
                     }
 
                     // Transactions header
@@ -997,6 +1007,64 @@ fun SalaryUsageCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun BudgetSectionCard(
+    hasBudget: Boolean,
+    onTap: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onTap),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MintGreen.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.PieChart,
+                    contentDescription = null,
+                    tint = ForestGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (hasBudget) "Presupuesto mensual" else "Crea tu presupuesto",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    if (hasBudget) "Ve tus límites y gastos por categoría"
+                    else "Define límites de gasto por categoría",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = ForestGreen,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

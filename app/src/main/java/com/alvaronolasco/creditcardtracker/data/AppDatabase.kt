@@ -18,9 +18,10 @@ import kotlinx.coroutines.launch
         ExpenseCategory::class,
         NotificationConfig::class,
         IncomeProfile::class,
-        IncomeEntry::class
+        IncomeEntry::class,
+        BudgetItem::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseCategoryDao(): ExpenseCategoryDao
     abstract fun notificationConfigDao(): NotificationConfigDao
     abstract fun incomeDao(): IncomeDao
+    abstract fun budgetDao(): BudgetDao
 
     companion object {
         val MIGRATION_6_7 = object : Migration(6, 7) {
@@ -47,6 +49,29 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 database.execSQL(
                     "ALTER TABLE credit_cards ADD COLUMN partialPaymentCycleEnd INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS budget_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        categoryId INTEGER NOT NULL,
+                        monthYear TEXT NOT NULL,
+                        limitAmount REAL NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(categoryId) REFERENCES categories(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_budget_items_categoryId ON budget_items(categoryId)"
+                )
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_budget_items_categoryId_monthYear ON budget_items(categoryId, monthYear)"
                 )
             }
         }
@@ -81,7 +106,7 @@ abstract class AppDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
