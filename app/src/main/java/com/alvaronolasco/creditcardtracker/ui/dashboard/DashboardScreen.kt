@@ -53,6 +53,7 @@ fun DashboardScreen(
     onCameraOpen: () -> Unit,
     onSearchClick: () -> Unit,
     onExpenseClick: (Int) -> Unit,
+    onSupportClick: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -68,6 +69,16 @@ fun DashboardScreen(
         NameSetupBottomSheet(
             onConfirm = { name -> viewModel.saveName(name) },
             onDismiss = { viewModel.dismissNamePrompt() }
+        )
+    }
+
+    if (uiState.showBudgetPrompt && !uiState.showNamePrompt) {
+        BudgetReminderDialog(
+            onGoToBudget = {
+                viewModel.dismissBudgetPrompt()
+                onBudgetClick()
+            },
+            onDismiss = { viewModel.dismissBudgetPrompt() }
         )
     }
 
@@ -270,6 +281,17 @@ fun DashboardScreen(
                             onTap = onBudgetClick,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
+                    }
+
+                    // Support developer card (frequency-gated)
+                    if (uiState.showSupportCard) {
+                        item {
+                            SupportDeveloperCard(
+                                onClick = onSupportClick,
+                                onDismiss = { viewModel.dismissSupportCard() },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
                     }
 
                     // Transactions header
@@ -1241,6 +1263,138 @@ fun BottomActionBar(
                     modifier = Modifier.size(24.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BudgetReminderDialog(
+    onGoToBudget: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Savings,
+                contentDescription = null,
+                tint = ForestGreen,
+                modifier = Modifier.size(32.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "¿Ya tienes tu presupuesto?",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Text(
+                text = "El mes ya comenzó y aún no has definido un presupuesto. Establecer uno te ayuda a controlar mejor tus finanzas.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onGoToBudget,
+                colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Crear presupuesto", fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "Más tarde",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
+fun SupportDeveloperCard(
+    onClick: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = androidx.compose.foundation.BorderStroke(1.dp, SoftLime.copy(alpha = 0.5f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(SoftLime.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = ForestGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Apoya al desarrollador",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Si la app te es útil, invítame un café",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = SoftLime,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+        // Dismiss button
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(28.dp)
+                .offset(x = 6.dp, y = (-6).dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Cerrar",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp)
+            )
         }
     }
 }

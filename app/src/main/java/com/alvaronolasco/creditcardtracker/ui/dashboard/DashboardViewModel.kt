@@ -41,7 +41,9 @@ data class DashboardUiState(
     val recentExpenses: List<ExpenseWithCategories> = emptyList(),
     val userName: String? = null,
     val showNamePrompt: Boolean = false,
-    val hasBudgetThisMonth: Boolean = false
+    val hasBudgetThisMonth: Boolean = false,
+    val showSupportCard: Boolean = false,
+    val showBudgetPrompt: Boolean = false
 )
 
 @HiltViewModel
@@ -60,15 +62,31 @@ class DashboardViewModel @Inject constructor(
         loadRecentExpenses()
         loadUserName()
         loadBudgetStatus()
+        _uiState.update { it.copy(showSupportCard = userPrefs.shouldShowSupportCard()) }
     }
 
     private fun loadBudgetStatus() {
         val currentMonthYear = DateUtils.getCurrentMonthYear()
         repository.getBudgetItemsForMonth(currentMonthYear)
             .onEach { items ->
-                _uiState.update { it.copy(hasBudgetThisMonth = items.isNotEmpty()) }
+                val hasBudget = items.isNotEmpty()
+                val dayOfMonth = LocalDate.now().dayOfMonth
+                val shouldPrompt = !hasBudget &&
+                    dayOfMonth >= 3 &&
+                    !userPrefs.isBudgetPromptDismissed(currentMonthYear)
+                _uiState.update {
+                    it.copy(
+                        hasBudgetThisMonth = hasBudget,
+                        showBudgetPrompt = shouldPrompt && !it.showNamePrompt
+                    )
+                }
             }
             .launchIn(viewModelScope)
+    }
+
+    fun dismissBudgetPrompt() {
+        userPrefs.dismissBudgetPrompt(DateUtils.getCurrentMonthYear())
+        _uiState.update { it.copy(showBudgetPrompt = false) }
     }
 
     private fun loadUserName() {
@@ -90,6 +108,11 @@ class DashboardViewModel @Inject constructor(
 
     fun dismissNamePrompt() {
         _uiState.update { it.copy(showNamePrompt = false) }
+    }
+
+    fun dismissSupportCard() {
+        userPrefs.dismissSupportCard()
+        _uiState.update { it.copy(showSupportCard = false) }
     }
 
     fun selectCard(index: Int) {

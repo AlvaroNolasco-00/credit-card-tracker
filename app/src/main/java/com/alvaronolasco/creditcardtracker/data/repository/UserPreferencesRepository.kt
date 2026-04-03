@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,7 +20,44 @@ class UserPreferencesRepository @Inject constructor(
         _userName.value = name.trim()
     }
 
+    fun getFirstLaunchTimestamp(): Long {
+        val stored = prefs.getLong(KEY_FIRST_LAUNCH_AT, 0L)
+        if (stored == 0L) {
+            val now = System.currentTimeMillis()
+            prefs.edit().putLong(KEY_FIRST_LAUNCH_AT, now).apply()
+            return now
+        }
+        return stored
+    }
+
+    fun dismissSupportCard() {
+        prefs.edit().putLong(KEY_SUPPORT_DISMISSED_AT, System.currentTimeMillis()).apply()
+    }
+
+    fun shouldShowSupportCard(): Boolean {
+        val firstLaunch = getFirstLaunchTimestamp()
+        val daysSinceFirstLaunch = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - firstLaunch)
+        if (daysSinceFirstLaunch < 7) return false
+
+        val dismissedAt = prefs.getLong(KEY_SUPPORT_DISMISSED_AT, 0L)
+        if (dismissedAt == 0L) return true
+
+        val daysSinceDismiss = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dismissedAt)
+        return daysSinceDismiss >= 30
+    }
+
+    fun dismissBudgetPrompt(monthYear: String) {
+        prefs.edit().putString(KEY_BUDGET_PROMPT_DISMISSED_MONTH, monthYear).apply()
+    }
+
+    fun isBudgetPromptDismissed(monthYear: String): Boolean {
+        return prefs.getString(KEY_BUDGET_PROMPT_DISMISSED_MONTH, null) == monthYear
+    }
+
     companion object {
         private const val KEY_USER_NAME = "user_name"
+        private const val KEY_FIRST_LAUNCH_AT = "first_launch_at"
+        private const val KEY_SUPPORT_DISMISSED_AT = "support_dismissed_at"
+        private const val KEY_BUDGET_PROMPT_DISMISSED_MONTH = "budget_prompt_dismissed_month"
     }
 }

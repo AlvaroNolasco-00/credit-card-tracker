@@ -16,6 +16,7 @@ import com.alvaronolasco.creditcardtracker.ui.income.IncomeSetupScreen
 import com.alvaronolasco.creditcardtracker.ui.income.AddEditIncomeScreen
 import com.alvaronolasco.creditcardtracker.ui.budget.BudgetScreen
 import com.alvaronolasco.creditcardtracker.ui.components.CameraPreviewScreen
+import com.alvaronolasco.creditcardtracker.ui.support.SupportScreen
 import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 
 @Composable
@@ -40,8 +41,13 @@ fun Navigation() {
                 onBudgetClick = { navController.navigate("budget") },
                 onCameraOpen = { navController.navigate("camera_preview") },
                 onSearchClick = { navController.navigate("search_expenses") },
-                onExpenseClick = { expenseId -> navController.navigate("edit_expense/$expenseId") }
+                onExpenseClick = { expenseId -> navController.navigate("edit_expense/$expenseId") },
+                onSupportClick = { navController.navigate("support_developer") }
             )
+        }
+
+        composable("support_developer") {
+            SupportScreen(onBack = { navController.popBackStack() })
         }
 
         composable(
