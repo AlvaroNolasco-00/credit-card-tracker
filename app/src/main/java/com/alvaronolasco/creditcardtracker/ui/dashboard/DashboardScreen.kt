@@ -57,7 +57,8 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val pagerState = rememberPagerState { uiState.cards.size.coerceAtLeast(1) }
+    // +1 for the "Add card" tile at the end
+    val pagerState = rememberPagerState { uiState.cards.size + 1 }
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectCard(pagerState.currentPage)
@@ -163,16 +164,16 @@ fun DashboardScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(
-                                onClick = onAddCard,
+                                onClick = onSupportClick,
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
-                                    .background(ForestGreen)
+                                    .background(SoftLime.copy(alpha = 0.85f))
                             ) {
                                 Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Agregar tarjeta",
-                                    tint = Color.White,
+                                    Icons.Default.Favorite,
+                                    contentDescription = "Apoya al desarrollador",
+                                    tint = ForestGreen,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -194,10 +195,14 @@ fun DashboardScreen(
                                 pageSpacing = 12.dp,
                                 modifier = Modifier.fillMaxWidth()
                             ) { page ->
-                                CreditCardPagerItem(
-                                    state = uiState.cards[page],
-                                    onClick = { onCardClick(uiState.cards[page].card.id) }
-                                )
+                                if (page < uiState.cards.size) {
+                                    CreditCardPagerItem(
+                                        state = uiState.cards[page],
+                                        onClick = { onCardClick(uiState.cards[page].card.id) }
+                                    )
+                                } else {
+                                    AddCardTile(onClick = onAddCard)
+                                }
                             }
                         }
                     }
@@ -211,6 +216,7 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Dots only for real cards (not the add-card tile)
                             repeat(uiState.cards.size) { index ->
                                 val isSelected = pagerState.currentPage == index
                                 val width by animateDpAsState(
@@ -528,6 +534,53 @@ fun CreditCardPagerItem(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun AddCardTile(
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1.586f)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 2.dp,
+            brush = Brush.linearGradient(listOf(ForestGreen.copy(alpha = 0.5f), MintGreen)),
+        ),
+        shadowElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MintGreen.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = null,
+                    tint = ForestGreen,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Agregar otra tarjeta",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = ForestGreen
+            )
         }
     }
 }

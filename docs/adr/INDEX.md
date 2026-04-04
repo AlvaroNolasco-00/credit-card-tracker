@@ -48,6 +48,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-029](ui/ADR-029-monthly-budget-feature.md) | Presupuesto mensual por categoría con comparación vs gastos reales | ui | Aceptado | 2026-03-31 |
 | [ADR-030](ui/ADR-030-support-developer-feature.md) | Feature "Apoya al Desarrollador" con donaciones via enlaces externos | ui | Aceptado | 2026-03-31 |
 | [ADR-031](ui/ADR-031-budget-reminder-dialog.md) | Recordatorio de presupuesto mensual en Dashboard | ui | Aceptado | 2026-04-03 |
+| [ADR-032](ui/ADR-032-dashboard-reorganization.md) | Reorganización de Dashboard y Acceso a Apoyo al Desarrollador | ui | Aceptado | 2026-04-03 |
 
 ## Regla de escritura
 
