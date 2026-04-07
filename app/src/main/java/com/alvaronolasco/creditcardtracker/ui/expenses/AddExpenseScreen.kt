@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.navigation.NavController
@@ -12,7 +14,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -26,7 +29,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -525,7 +531,7 @@ fun AddExpenseScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.ocrProcessing,
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 ) {
                     Text(
@@ -848,37 +854,59 @@ private fun ImageCropCanvas(
     var composableSize by remember { mutableStateOf(IntSize.Zero) }
     var selStart by remember { mutableStateOf<Offset?>(null) }
     var selEnd by remember { mutableStateOf<Offset?>(null) }
+    var isDrawMode by remember { mutableStateOf(false) }
+    var scale by remember { mutableStateOf(1f) }
+    // Absolute canvas position of the image center.
+    // Storing center (not a canvas-relative offset) means a layout resize caused by
+    // the instruction text changing height won't visually shift the image.
+    var imageCenter by remember { mutableStateOf(Offset.Zero) }
+
+    // Center image once the canvas size is first known.
+    LaunchedEffect(composableSize) {
+        if (composableSize.width > 0 && composableSize.height > 0 && imageCenter == Offset.Zero) {
+            imageCenter = Offset(composableSize.width / 2f, composableSize.height / 2f)
+        }
+    }
 
     LaunchedEffect(imageUri) {
-        withContext(Dispatchers.IO) {
-            bitmap = try {
+        val loaded = withContext(Dispatchers.IO) {
+            try {
                 context.contentResolver.openInputStream(imageUri)?.use { stream ->
                     BitmapFactory.decodeStream(stream)
-                }
+                }?.let { bmp -> rotateBitmapByExif(context, imageUri, bmp) }
             } catch (e: Exception) {
                 null
             }
         }
+        bitmap = loaded
+        selStart = null
+        selEnd = null
+        scale = 1f
+        imageCenter = if (composableSize.width > 0)
+            Offset(composableSize.width / 2f, composableSize.height / 2f)
+        else
+            Offset.Zero
     }
 
-    // Compute the actual image rect within the canvas (letterbox/pillarbox fit)
-    val imageRect: Rect? = remember(bitmap, composableSize) {
+    // Fitted size at scale=1 (letterbox/pillarbox).
+    val baseFitSize: Size? = remember(bitmap, composableSize) {
         val bmp = bitmap ?: return@remember null
         if (composableSize.width == 0 || composableSize.height == 0) return@remember null
         val bmpRatio = bmp.width.toFloat() / bmp.height
         val canvasRatio = composableSize.width.toFloat() / composableSize.height
-        val drawWidth: Float
-        val drawHeight: Float
-        if (bmpRatio > canvasRatio) {
-            drawWidth = composableSize.width.toFloat()
-            drawHeight = composableSize.width / bmpRatio
-        } else {
-            drawHeight = composableSize.height.toFloat()
-            drawWidth = composableSize.height * bmpRatio
-        }
-        val ox = (composableSize.width - drawWidth) / 2f
-        val oy = (composableSize.height - drawHeight) / 2f
-        Rect(ox, oy, ox + drawWidth, oy + drawHeight)
+        if (bmpRatio > canvasRatio)
+            Size(composableSize.width.toFloat(), composableSize.width / bmpRatio)
+        else
+            Size(composableSize.height * bmpRatio, composableSize.height.toFloat())
+    }
+
+    // Effective rect: expands from imageCenter as scale grows.
+    val imageRect: Rect? = remember(baseFitSize, scale, imageCenter) {
+        val sz = baseFitSize ?: return@remember null
+        val halfW = sz.width * scale / 2f
+        val halfH = sz.height * scale / 2f
+        Rect(imageCenter.x - halfW, imageCenter.y - halfH,
+             imageCenter.x + halfW, imageCenter.y + halfH)
     }
 
     val hasSelection = remember(selStart, selEnd) {
@@ -894,29 +922,93 @@ private fun ImageCropCanvas(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Dibuja un rectángulo alrededor del total",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        // Fixed height prevents text-length differences from resizing the canvas
+        // (which would shift the zoom anchor and make the image appear to jump).
+        Box(modifier = Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.CenterStart) {
+            Text(
+                text = if (isDrawMode)
+                    "Dibuja un rectángulo alrededor del total"
+                else
+                    "Pellizca para zoom · Arrastra para mover",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                selected = !isDrawMode,
+                onClick = { isDrawMode = false },
+                label = { Text("Zoom / Mover") },
+                leadingIcon = {
+                    Icon(Icons.Default.ZoomIn, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            )
+            FilterChip(
+                selected = isDrawMode,
+                onClick = { isDrawMode = true },
+                label = { Text("Seleccionar") },
+                leadingIcon = {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            )
+            if (hasSelection) {
+                TextButton(
+                    onClick = { selStart = null; selEnd = null },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) {
+                    Text("Limpiar", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .clipToBounds()            // keep zoomed image inside this area
                 .onSizeChanged { composableSize = it }
+                // Zoom/pan — always active; guarded by isDrawMode check inside.
                 .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            selStart = offset
-                            selEnd = offset
-                        },
-                        onDrag = { change, _ ->
-                            selEnd = change.position
-                        },
-                        onDragEnd = {}
-                    )
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        if (!isDrawMode) {
+                            val prevScale = scale
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            // Zoom around the pinch centroid, then apply pan.
+                            val ratio = scale / prevScale
+                            imageCenter = centroid + (imageCenter - centroid) * ratio + pan
+                        }
+                    }
+                }
+                // Draw mode — always active; captures the press immediately (no slop delay).
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        // Wait for first finger down
+                        var event = awaitPointerEvent()
+                        var firstPointer = event.changes.firstOrNull { it.pressed && !it.previousPressed }
+                        while (firstPointer == null) {
+                            event = awaitPointerEvent()
+                            firstPointer = event.changes.firstOrNull { it.pressed && !it.previousPressed }
+                        }
+                        if (!isDrawMode) return@awaitEachGesture
+                        selStart = firstPointer.position
+                        selEnd = firstPointer.position
+                        firstPointer.consume()
+                        val trackId = firstPointer.id
+                        while (true) {
+                            val dragEvent = awaitPointerEvent()
+                            val drag = dragEvent.changes.firstOrNull { it.id == trackId } ?: break
+                            selEnd = drag.position
+                            drag.consume()
+                            if (!drag.pressed) break
+                        }
+                    }
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1003,6 +1095,26 @@ private fun ImageCropCanvas(
             )
         }
     }
+}
+
+private fun rotateBitmapByExif(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
+    val orientation = try {
+        context.contentResolver.openInputStream(uri)?.use { ExifInterface(it) }
+            ?.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            ?: ExifInterface.ORIENTATION_NORMAL
+    } catch (e: Exception) {
+        ExifInterface.ORIENTATION_NORMAL
+    }
+    val matrix = Matrix()
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+        else -> return bitmap
+    }
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 }
 
 private fun createTempImageUri(context: Context): Uri {

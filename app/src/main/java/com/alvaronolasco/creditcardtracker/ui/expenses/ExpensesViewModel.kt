@@ -127,8 +127,8 @@ class ExpensesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(ocrProcessing = true) }
             val result = ocrProcessor.processImageBitmap(bitmap)
-            if (result.detectedAmount != null) {
-                _uiState.update {
+            when (result.confidence) {
+                Confidence.HIGH, Confidence.MEDIUM -> _uiState.update {
                     it.copy(
                         ocrResultAmount = result.detectedAmount,
                         ocrProcessing = false,
@@ -136,12 +136,11 @@ class ExpensesViewModel @Inject constructor(
                         ocrPendingAmount = null
                     )
                 }
-            } else {
-                _uiState.update {
+                Confidence.LOW, Confidence.NONE -> _uiState.update {
                     it.copy(
                         ocrProcessing = false,
                         ocrDialogState = OcrDialogState.CONFIRM,
-                        ocrPendingAmount = null
+                        ocrPendingAmount = result.detectedAmount
                     )
                 }
             }

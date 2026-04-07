@@ -1,0 +1,267 @@
+# Changelog — Credit Card Tracker
+
+Bitácora central de cambios, features, bug fixes y decisiones del proyecto.  
+Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
+
+**Nota:** Cada cambio significativo tiene un ADR asociado en `docs/adr/`. Ver [INDEX.md](docs/adr/INDEX.md).
+
+---
+
+## [Unreleased]
+
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+### Deprecated
+- 
+
+### Removed
+- 
+
+### Security
+- 
+
+---
+
+## [2.1.0] — 2026-04-06
+
+**Tema:** Reorganización del Dashboard y mejoras de UI
+
+### Added
+- ✅ Feature "Apoya al Desarrollador" con acceso vía botón en Dashboard
+- ✅ Pager de tarjetas en Dashboard (deslizamiento horizontal)
+- ✅ Soporte para botón "Agregar Tarjeta" en el pager
+
+**ADRs:** [ADR-030](docs/adr/ui/ADR-030-support-developer-feature.md), [ADR-032](docs/adr/ui/ADR-032-dashboard-reorganization.md)
+
+### Changed
+- 📝 Reorganización visual del Dashboard: Card pager desplazó secciones
+- 📝 Acceso al usuario/config mediante saludo interactivo en header
+
+**Archivo:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/dashboard/DashboardScreen.kt`
+
+### Fixed
+- 🐛 Mejora de OCR: keywords expandidos para detección de montos
+- 🐛 Refinamiento de heurística para total en recibos
+
+**ADR:** [ADR mejorado de OCR pendiente]  
+**Tests:** `OcrAmountDetectorTest.kt`
+
+---
+
+## [2.0.0] — 2026-03-31
+
+**Tema:** Presupuesto mensual, mejoras de UX y estilos
+
+### Added
+- ✅ Presupuesto mensual por categoría
+- ✅ Comparación visual: gastos vs presupuesto (barras/porcentajes)
+- ✅ Recordatorio de presupuesto en Dashboard (1x por mes)
+- ✅ Color de tarjeta de ingresos: celeste para mejor diferenciación
+
+**ADRs:** 
+- [ADR-029](docs/adr/ui/ADR-029-monthly-budget-feature.md) — Presupuesto
+- [ADR-031](docs/adr/ui/ADR-031-budget-reminder-dialog.md) — Recordatorio
+- [ADR-028](docs/adr/widget/ADR-028-income-card-celeste-color.md) — Color ingresos
+
+### Changed
+- 📝 Base de datos: nueva entidad `BudgetProfile` con CRUD completo
+- 📝 IncomeProfile: renamed `monthlyBudget` (genérico) → estructura relacional
+- 📝 AddExpenseScreen: agregadas opciones de categoría al formulario
+
+**DB Migration:** `MIGRATION_8_9`
+
+### Fixed
+- 🐛 DatePicker: bloqueadas fechas futuras (solo pasado)
+- 🐛 Contraste de botones en diálogos mejorado
+
+**ADR:** [ADR-027](docs/adr/ui/ADR-027-block-future-dates-in-expense-datepicker.md)
+
+### Known Issues
+- ⚠️ Widget es lento con 5+ tarjetas en algunos dispositivos (Pixel 3a)
+  - Planned fix: [ADR-FUTURE-widget-performance.md]
+
+---
+
+## [1.3.0] — 2026-03-28
+
+**Tema:** Nuevo sistema de balance split y pagos
+
+### Added
+- ✅ Balance dividido: saldo anterior + saldo nuevo (post-corte)
+- ✅ Botón "Pagar Saldo" para liquidar saldo del corte
+- ✅ Selector de tarjeta destino en AddExpenseScreen
+
+**ADRs:**
+- [ADR-021](docs/adr/ui/ADR-021-split-balance-post-cutoff.md)
+- [ADR-022](docs/adr/ui/ADR-022-pay-balance-button.md)
+- [ADR-023](docs/adr/ui/ADR-023-change-card-in-expense.md)
+
+### Changed
+- 📝 CreditCard entity: nuevos campos `paymentRecords`, `balanceBefore`, `balanceAfter`
+- 📝 Layout horizontal: mejora visual del balance split
+- 📝 Notificaciones: refactor para soportar reminders de pago
+
+**DB Migration:** `MIGRATION_7_8`  
+**Files:** 
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/data/entity/CreditCard.kt`
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/cards/CardDetailScreen.kt`
+
+### Fixed
+- 🐛 Cálculo de balance para tarjetas con corte reciente
+
+---
+
+## [1.2.0] — 2026-03-27
+
+**Tema:** Dark mode, OCR mejorado, navegación
+
+### Added
+- ✅ Modo oscuro con colores adaptativos
+- ✅ Color dinámico de texto según fondo (WCAG AA compliance)
+- ✅ Selector de fecha de transacción en AddExpenseScreen
+- ✅ Sistema de notificaciones con toggles
+
+**ADRs:**
+- [ADR-017](docs/adr/ui/ADR-017-dark-mode-color-system.md) — Dark mode
+- [ADR-018](docs/adr/ui/ADR-018-card-text-color-contrast.md) — Contraste texto
+- [ADR-015](docs/adr/ui/ADR-015-expense-date-picker.md) — Date picker
+- [ADR-019](docs/adr/ui/ADR-019-notification-toggles.md) — Notificaciones
+
+### Changed
+- 📝 Theme: refactorización completa en `ui/theme/`
+- 📝 OCR: mejora de detección de montos (4 niveles de confianza)
+- 📝 AddExpenseScreen: ahora es un formulario con date picker integrado
+
+### Fixed
+- 🐛 MSI: cálculo correcto de período y monto
+- 🐛 Widget: propiedad `totalDue` ahora es computada correctamente
+
+**ADRs:** [ADR-013](docs/adr/data/ADR-013-msi-installments.md), [ADR-014](docs/adr/data/ADR-014-msi-period-amount-fix.md)
+
+**DB Migration:** `MIGRATION_6_7`
+
+---
+
+## [1.1.0] — 2026-03-26
+
+**Tema:** Widget mejorado, nuevo sistema de actualización
+
+### Added
+- ✅ Widget: soporte para redimensionamiento a 4x4
+- ✅ Widget: tarjeta de resumen "Ingresos vs Gastos"
+- ✅ Broadcast system: actualización garantizada del widget tras cambios
+
+**ADRs:**
+- [ADR-011](docs/adr/widget/ADR-011-widget-grid-4x4-support.md)
+- [ADR-012](docs/adr/widget/ADR-012-widget-income-summary-card.md)
+- [ADR-020](docs/adr/architecture/ADR-020-broadcast-widget-update.md) — Broadcast (mejora de ADR-007)
+
+### Changed
+- 📝 Widget: barra de progreso ahora es continua (no segmentada)
+- 📝 Architecture: refactor de `WidgetCardData` con propiedades computadas
+- 📝 Broadcast: nuevo sistema de comunicación entre capas
+
+**Files:**
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/widget/` — Refactorización completa
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/notifications/WidgetUpdateBroadcast.kt` — Nuevo
+
+### Deprecated
+- [ADR-007](docs/adr/architecture/ADR-007-widget-update-guarantee.md) — Supersedido por ADR-020
+
+---
+
+## [1.0.0] — 2026-03-25
+
+**Tema:** Versión inicial con features core
+
+### Added
+- ✅ MVVM + Clean Architecture (Data, Presentation, DI)
+- ✅ Room database con 7 entidades
+- ✅ Dashboard con tarjetas de crédito
+- ✅ Agregar/eliminar gastos con OCR
+- ✅ Categorías predefinidas (Entretenimiento, Transporte, Comida, Medicina)
+- ✅ Widget Glance: vista rápida de tarjetas y gastos
+- ✅ Deep linking desde widget al app
+- ✅ Notificaciones de recordatorio
+- ✅ Sistema ADR con 6 decisiones iniciales
+
+**ADRs (v1.0):**
+- [ADR-001](docs/adr/widget/ADR-001-all-cards-lazy-column.md) — LazyColumn en widget
+- [ADR-002](docs/adr/widget/ADR-002-quick-expense-button.md) — Botón + en widget
+- [ADR-003](docs/adr/widget/ADR-003-full-width-grid.md) — Widget ancho completo
+- [ADR-004](docs/adr/ui/ADR-004-expense-card-banner.md) — Banner en form
+- [ADR-005](docs/adr/architecture/ADR-005-widget-deeplink-singleton.md) — DeepLink singleton
+- [ADR-006](docs/adr/widget/ADR-006-progress-bar-spending.md) — Progress bar
+
+### Technical Details
+- **Language:** Kotlin 1.9.22
+- **Compile SDK:** 34
+- **Min SDK:** 26 (Android 8.0)
+- **Framework:** Jetpack Compose + Material 3
+- **DI:** Hilt
+- **Database:** Room v8
+- **Image Processing:** ML Kit Text Recognition
+
+### Known Limitations
+- ⚠️ Widget: solo 3 tarjetas visibles (mejora planificada en v1.1)
+- ⚠️ OCR: confianza media en recibos mal escaneados
+
+---
+
+## Guía de uso de este changelog
+
+### Para el desarrollador
+1. **Cada vez que haces un commit significativo:**
+   - Agregar entrada a `[Unreleased]` bajo la categoría apropiada
+   - Crear/actualizar ADR asociado (ver `CLAUDE.md`)
+   - Incluir referencia al ADR en el changelog
+
+2. **Formato de entradas:**
+   ```
+   - [Emoji] Descripción breve (máx 1 línea)
+   **File/Módulo:** `ruta/al/archivo.kt`
+   **ADR:** [ADR-NNN](...)
+   ```
+
+3. **Antes de hacer release:**
+   - Mover `[Unreleased]` a `[VERSION] — YYYY-MM-DD`
+   - Actualizar INDEX.md en ADRs
+   - Crear git tag: `git tag -a vX.Y.Z -m "Release X.Y.Z"`
+
+### Categorías de cambios
+- **Added:** Nuevas features o capacidades
+- **Changed:** Cambios en features existentes o refactorización
+- **Fixed:** Bug fixes
+- **Deprecated:** Features que serán removidas próximamente
+- **Removed:** Features removidas
+- **Security:** Fixes de seguridad
+
+### Emojis para escaneo rápido
+- ✅ Adición (Added)
+- 📝 Cambio (Changed)
+- 🐛 Fix (Fixed)
+- ⚠️ Deprecado (Deprecated)
+- ❌ Removido (Removed)
+- 🔒 Seguridad (Security)
+
+---
+
+## Versionado semántico
+
+**MAJOR.MINOR.PATCH**
+
+- **MAJOR:** Cambios incompatibles (breaking changes, nueva arquitectura)
+- **MINOR:** Nuevas features backwards-compatible
+- **PATCH:** Bug fixes
+
+Ejemplo: `1.2.3`
+- `1` = Major (cambios arquitectónicos)
+- `2` = Minor (nuevas features)
+- `3` = Patch (bug fixes)

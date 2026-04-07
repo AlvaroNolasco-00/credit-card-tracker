@@ -56,37 +56,23 @@ Run a single test class:
 
 ## ADR System
 
-All significant decisions **must** be documented in `docs/adr/` before or immediately after implementation. See [docs/adr/INDEX.md](docs/adr/INDEX.md) for the full list of decisions.
+All significant decisions **must** be documented in `docs/adr/` before or immediately after implementation.
 
-### When to write an ADR
+**Quick reference:**
+- **When:** UI/widget features, entity changes, architecture patterns, SDK changes, multi-option decisions
+- **Template:** [docs/adr/TEMPLATE.md](docs/adr/TEMPLATE.md) — Structure: Contexto → Decisión → Consecuencias
+- **Registry:** [docs/adr/INDEX.md](docs/adr/INDEX.md) — All 32+ decisions, searchable by category
+- **Example:** [docs/adr/EXAMPLE-DETAILED.md](docs/adr/EXAMPLE-DETAILED.md) — Reference (ADR-029, ⭐⭐⭐⭐⭐ quality)
+- **Maintenance:** [docs/adr/MAINTAINER.md](docs/adr/MAINTAINER.md) — Workflow, PR checklist, troubleshooting, release procedures
+- **Changelog:** [CHANGELOG.md](CHANGELOG.md) — Synchronized bitácora (each entry cites ADR + files)
 
-- Add or change a feature visible to the user (UI, widget, navigation)
-- Change an entity field, DAO query, or repository method
-- Introduce a new cross-cutting pattern or singleton
-- Change a build config, SDK version, or manifest attribute with behavioral impact
-- Make a decision where two or more approaches were considered
+**File naming:** `docs/adr/<category>/ADR-NNN-slug.md` (categories: `widget/`, `ui/`, `data/`, `architecture/`, `navigation/`)
 
-### File naming: `docs/adr/<category>/ADR-NNN-slug.md`
-
-Categories: `widget/`, `ui/`, `data/`, `navigation/`, `architecture/`
-
-IDs are sequential and global (never reuse). Slug is lowercase-kebab-case. Always update `INDEX.md`.
-
-### Mandatory sections
-
-```markdown
-# ADR-NNN: Title
-
-**Fecha:** YYYY-MM-DD
-**Estado:** Aceptado | Deprecado | Supersedido por ADR-XXX
-**Categoría:** widget | ui | data | navigation | architecture
-
-## Contexto
-## Decisión
-## Consecuencias
-```
-
-To supersede a decision: mark the old ADR **Supersedido por ADR-XXX**, create a new one — never delete or rewrite past ADRs.
+**PR checklist:**
+- [ ] ADR created (use TEMPLATE.md)
+- [ ] docs/adr/INDEX.md updated
+- [ ] CHANGELOG.md updated in [Unreleased]
+- [ ] Cross-references: ADR ↔ CHANGELOG ↔ Code
 
 ## Import Rules
 

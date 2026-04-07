@@ -125,7 +125,10 @@ fun DashboardScreen(
                         Spacer(Modifier.height(24.dp))
                         Button(
                             onClick = onAddCard,
-                            colors = ButtonDefaults.buttonColors(containerColor = ForestGreen)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
+                            )
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(Modifier.width(4.dp))

@@ -67,16 +67,15 @@ class AmountDetector {
         // Single-word keywords (lower priority)
         "total", "neto", "cobrado", "monto", "importe", "a pagar",
         "amount", "sum", "due", "pay", "cobro",
-        "compra por", "consumo", "pagado", "pago",
-        "por usd", "por mxn", "usd", "mxn", "eur"
+        "compra por", "consumo", "pagado", "pago"
     )
 
     // Fix #1: unified pattern — \d+ (no 3-digit cap) handles amounts like 12500.00 correctly.
     // The old two-alternative approach caused \d{1,3} to match "125" from "12500.00",
     // making the engine never try the \d+ alternative.
-    // \d+(?:[.,]\d{3})* handles thousands separators; (?:[.,]\d{1,2})? handles 1-2 decimal places.
+    // \d+(?:[.,\s]+\d{3})* handles thousands separators including spaces; (?:[.,]\d{1,2})? handles 1-2 decimal places.
     private val amountRegex = Regex(
-        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
+        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d+(?:[.,\s]+\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
         RegexOption.IGNORE_CASE
     )
 
@@ -107,9 +106,9 @@ class AmountDetector {
         val lastSectionResult = findAmountInLastSection(visionText.text)
         if (lastSectionResult != null) return DetectionResult(lastSectionResult, Confidence.MEDIUM)
 
-        // Layer 4: Max Amount Heuristic (Low confidence)
-        val maxAmount = findMaxAmount(visionText.text)
-        if (maxAmount != null) return DetectionResult(maxAmount, Confidence.LOW)
+        // Layer 4: Last Amount Heuristic (Low confidence)
+        val fallbackAmount = findLastAmount(visionText.text)
+        if (fallbackAmount != null) return DetectionResult(fallbackAmount, Confidence.LOW)
 
         return DetectionResult(null, Confidence.NONE)
     }
@@ -122,8 +121,8 @@ class AmountDetector {
         val lastSectionResult = findAmountInLastSection(text)
         if (lastSectionResult != null) return DetectionResult(lastSectionResult, Confidence.MEDIUM)
 
-        val maxAmount = findMaxAmount(text)
-        if (maxAmount != null) return DetectionResult(maxAmount, Confidence.LOW)
+        val fallbackAmount = findLastAmount(text)
+        if (fallbackAmount != null) return DetectionResult(fallbackAmount, Confidence.LOW)
 
         return DetectionResult(null, Confidence.NONE)
     }
@@ -150,7 +149,7 @@ class AmountDetector {
                 val startBelow = maxOf(0, i - 7)
                 for (j in (i - 1 downTo startBelow)) {
                     val belowLine = reversedLines[j]
-                    val found = firstValidAmount(belowLine)
+                    val found = lastValidAmountOnLine(belowLine)
                     if (found != null) return found
                 }
 
@@ -158,7 +157,7 @@ class AmountDetector {
                 val endAbove = minOf(reversedLines.size - 1, i + 4)
                 for (j in (i + 1..endAbove)) {
                     val aboveLine = reversedLines[j]
-                    val found = firstValidAmount(aboveLine)
+                    val found = lastValidAmountOnLine(aboveLine)
                     if (found != null) return found
                 }
             }
@@ -173,22 +172,20 @@ class AmountDetector {
         // Prefer amount to the right of the keyword
         if (keywordIndex >= 0) {
             val afterKeyword = line.substring(keywordIndex)
-            val match = amountRegex.find(afterKeyword)
-            if (match != null && !looksLikeNonMonetary(match.value)) {
-                val parsed = parseAmount(match.groupValues[2])
-                if (parsed != null && parsed > 0.0) return parsed
-            }
+            val rightAmount = lastValidAmountOnLine(afterKeyword)
+            if (rightAmount != null) return rightAmount
         }
 
         // Fallback: amount anywhere on the same line (e.g., "$50.00  TOTAL")
-        return firstValidAmount(line)
+        return lastValidAmountOnLine(line)
     }
 
-    private fun firstValidAmount(line: String): Double? {
-        for (match in amountRegex.findAll(line)) {
-            if (!looksLikeNonMonetary(match.value)) {
+    private fun lastValidAmountOnLine(line: String): Double? {
+        val matches = amountRegex.findAll(line).toList()
+        for (match in matches.asReversed()) {
+            if (!looksLikeNonMonetary(match.value, line)) {
                 val parsed = parseAmount(match.groupValues[2])
-                if (parsed != null && parsed > 0.0) return parsed
+                if (parsed != null) return parsed
             }
         }
         return null
@@ -211,7 +208,7 @@ class AmountDetector {
             val hasKeyword = totalKeywords.any { blockLower.contains(it) }
             val yPos = block.boundingBox?.top ?: 0
             amountRegex.findAll(block.text).forEach { match ->
-                if (!looksLikeNonMonetary(match.value)) {
+                if (!looksLikeNonMonetary(match.value, block.text)) {
                     parseAmount(match.groupValues[2])?.let { amount ->
                         candidates.add(Candidate(amount, hasKeyword, yPos))
                     }
@@ -221,30 +218,30 @@ class AmountDetector {
 
         if (candidates.isEmpty()) return null
 
-        // Fix #5: prefer amounts in keyword-bearing blocks; among equal-priority pick the largest
+        // Fix #5: prefer amounts in keyword-bearing blocks; among equal-priority pick the bottom-most
         val keywordCandidates = candidates.filter { it.hasKeyword }
-        if (keywordCandidates.isNotEmpty()) return keywordCandidates.maxOf { it.amount }
-        return candidates.maxOf { it.amount }
+        if (keywordCandidates.isNotEmpty()) return keywordCandidates.maxByOrNull { it.yPos }?.amount
+        return candidates.maxByOrNull { it.yPos }?.amount
     }
 
-    private fun findMaxAmount(text: String): Double? {
+    private fun findLastAmount(text: String): Double? {
         val lines = text.split("\n")
         val halfPoint = lines.size / 2
 
         val bottomHalfText = lines.drop(halfPoint).joinToString("\n")
-        val bottomResult = amountRegex.findAll(bottomHalfText)
-            .filter { !looksLikeNonMonetary(it.value) }
-            .mapNotNull { parseAmount(it.groupValues[2]) }
-            .filter { it in 0.01..999999.99 }
-            .maxOrNull()
+        val bottomResult = bottomHalfText.split("\n")
+            .flatMap { line -> amountRegex.findAll(line).map { it to line } }
+            .filter { !looksLikeNonMonetary(it.first.value, it.second) }
+            .mapNotNull { parseAmount(it.first.groupValues[2]) }
+            .lastOrNull()
 
         if (bottomResult != null) return bottomResult
 
-        return amountRegex.findAll(text)
-            .filter { !looksLikeNonMonetary(it.value) }
-            .mapNotNull { parseAmount(it.groupValues[2]) }
-            .filter { it in 0.01..999999.99 }
-            .maxOrNull()
+        return lines
+            .flatMap { line -> amountRegex.findAll(line).map { it to line } }
+            .filter { !looksLikeNonMonetary(it.first.value, it.second) }
+            .mapNotNull { parseAmount(it.first.groupValues[2]) }
+            .lastOrNull()
     }
 
     private fun findAmountInLastSection(text: String): Double? {
@@ -254,17 +251,33 @@ class AmountDetector {
         val candidates = mutableListOf<Double>()
         lastHalf.forEach { line ->
             amountRegex.findAll(line).forEach { match ->
-                if (!looksLikeNonMonetary(match.value)) {
+                if (!looksLikeNonMonetary(match.value, line)) {
                     parseAmount(match.groupValues[2])?.let { candidates.add(it) }
                 }
             }
         }
-        return candidates.maxOrNull()
+        return candidates.lastOrNull()
     }
 
-    private fun looksLikeNonMonetary(text: String): Boolean {
-        if (phonePatterns.any { it.containsMatchIn(text) }) return true
-        if (datePatterns.any { it.containsMatchIn(text) }) return true
+    private val idKeywords = listOf(
+        "nit", "rfc", "ruc", "factura", "orden", "ticket", "folio",
+        "autorizacion", "ref", "tarjeta", "terminal", "cajero", "aprobacion", "cuenta"
+    )
+
+    private fun looksLikeNonMonetary(matchStr: String, contextStr: String = ""): Boolean {
+        if (phonePatterns.any { it.containsMatchIn(matchStr) }) return true
+        if (datePatterns.any { it.containsMatchIn(matchStr) }) return true
+
+        val cleanNum = matchStr.replace("[^0-9]".toRegex(), "")
+        if (cleanNum.length >= 6 && !matchStr.contains(".") && !matchStr.contains(",")) return true
+
+        if (contextStr.isNotBlank()) {
+            val lowerContext = contextStr.lowercase()
+            val hasIdKeyword = idKeywords.any { lowerContext.contains(it) }
+            val hasTotalKeyword = totalKeywords.any { lowerContext.contains(it) }
+            if (hasIdKeyword && !hasTotalKeyword) return true
+        }
+
         return false
     }
 
@@ -299,6 +312,11 @@ class AmountDetector {
             }
         }
 
-        return clean.toDoubleOrNull()
+        val parsed = clean.toDoubleOrNull()
+        return if (parsed != null && isValidAmount(parsed)) parsed else null
+    }
+
+    private fun isValidAmount(amount: Double): Boolean {
+        return amount in 0.01..999999.99
     }
 }
