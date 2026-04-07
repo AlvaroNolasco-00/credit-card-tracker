@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.ui.expenses
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +11,7 @@ import com.alvaronolasco.creditcardtracker.data.entity.Expense
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import java.util.Calendar
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
+import com.alvaronolasco.creditcardtracker.ocr.Confidence
 import com.alvaronolasco.creditcardtracker.ocr.OcrProcessor
 import com.alvaronolasco.creditcardtracker.widget.CreditCardWidgetReceiver
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +19,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class OcrDialogState { NONE, CONFIRM, CROP }
 
 data class ExpensesUiState(
     val expenses: List<ExpenseWithCategories> = emptyList(),
@@ -26,7 +30,9 @@ data class ExpensesUiState(
     val ocrProcessing: Boolean = false,
     val currentExpense: ExpenseWithCategories? = null,
     val currentCard: CreditCard? = null,
-    val allCards: List<CreditCard> = emptyList()
+    val allCards: List<CreditCard> = emptyList(),
+    val ocrDialogState: OcrDialogState = OcrDialogState.NONE,
+    val ocrPendingAmount: Double? = null
 )
 
 @HiltViewModel
@@ -84,7 +90,61 @@ class ExpensesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(ocrProcessing = true) }
             val result = ocrProcessor.processImage(uri)
-            _uiState.update { it.copy(ocrResultAmount = result.detectedAmount, ocrProcessing = false) }
+            when (result.confidence) {
+                Confidence.HIGH, Confidence.MEDIUM -> _uiState.update {
+                    it.copy(ocrResultAmount = result.detectedAmount, ocrProcessing = false)
+                }
+                Confidence.LOW, Confidence.NONE -> _uiState.update {
+                    it.copy(
+                        ocrProcessing = false,
+                        ocrDialogState = OcrDialogState.CONFIRM,
+                        ocrPendingAmount = result.detectedAmount
+                    )
+                }
+            }
+        }
+    }
+
+    fun confirmOcrAmount() {
+        _uiState.update {
+            it.copy(
+                ocrResultAmount = it.ocrPendingAmount,
+                ocrDialogState = OcrDialogState.NONE,
+                ocrPendingAmount = null
+            )
+        }
+    }
+
+    fun dismissOcrDialog() {
+        _uiState.update { it.copy(ocrDialogState = OcrDialogState.NONE, ocrPendingAmount = null) }
+    }
+
+    fun showOcrCropMode() {
+        _uiState.update { it.copy(ocrDialogState = OcrDialogState.CROP) }
+    }
+
+    fun processOcrFromCrop(bitmap: Bitmap) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(ocrProcessing = true) }
+            val result = ocrProcessor.processImageBitmap(bitmap)
+            if (result.detectedAmount != null) {
+                _uiState.update {
+                    it.copy(
+                        ocrResultAmount = result.detectedAmount,
+                        ocrProcessing = false,
+                        ocrDialogState = OcrDialogState.NONE,
+                        ocrPendingAmount = null
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        ocrProcessing = false,
+                        ocrDialogState = OcrDialogState.CONFIRM,
+                        ocrPendingAmount = null
+                    )
+                }
+            }
         }
     }
 

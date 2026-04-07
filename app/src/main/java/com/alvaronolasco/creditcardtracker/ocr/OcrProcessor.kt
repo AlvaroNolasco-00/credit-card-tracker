@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.ocr
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
@@ -26,10 +27,21 @@ class OcrProcessor(private val context: Context) {
             val image = InputImage.fromFilePath(context, uri)
             val visionText = recognizer.process(image).await()
             val fullText = visionText.text
-            
             val detector = AmountDetector()
             val detection = detector.detect(visionText)
-            
+            OcrResult(fullText, detection.amount, detection.confidence)
+        } catch (e: Exception) {
+            OcrResult("", null, Confidence.NONE)
+        }
+    }
+
+    suspend fun processImageBitmap(bitmap: Bitmap): OcrResult {
+        return try {
+            val image = InputImage.fromBitmap(bitmap, 0)
+            val visionText = recognizer.process(image).await()
+            val fullText = visionText.text
+            val detector = AmountDetector()
+            val detection = detector.detect(visionText)
             OcrResult(fullText, detection.amount, detection.confidence)
         } catch (e: Exception) {
             OcrResult("", null, Confidence.NONE)
@@ -38,32 +50,40 @@ class OcrProcessor(private val context: Context) {
 }
 
 class AmountDetector {
-    
+
     data class DetectionResult(
         val amount: Double?,
         val confidence: Confidence
     )
 
+    // Fix #7: expanded keywords for Central American / Mexican market
     private val totalKeywords = listOf(
-        "total", "total a pagar", "monto total", "importe total",
-        "gran total", "neto", "amount due", "balance due",
-        "monto", "importe", "a pagar", "cobro", "cargo total",
-        "amount", "net total", "grand total", "sum", "due", "pay",
-        "compra por", "consumo", "pagado", "pago", "por usd", "por mxn", "usd", "mxn", "eur"
+        // Most specific first (multi-word) to avoid partial matches on generic terms
+        "total a pagar", "neto a pagar", "monto total", "importe total",
+        "gran total", "total general", "total factura", "total de compra",
+        "total ventas", "venta total", "monto de su compra", "monto de compra",
+        "importe neto", "cargo total", "balance due", "amount due",
+        "net total", "grand total",
+        // Single-word keywords (lower priority)
+        "total", "neto", "cobrado", "monto", "importe", "a pagar",
+        "amount", "sum", "due", "pay", "cobro",
+        "compra por", "consumo", "pagado", "pago",
+        "por usd", "por mxn", "usd", "mxn", "eur"
     )
 
-    // Regex to match currency amounts:
-    // Support symbols: $, Q, L, €, etc., and codes like USD, MXN
-    // Support thousands separators: 1,234.56 or 1.234,56
-    // Support no decimals: $100
+    // Fix #1: unified pattern — \d+ (no 3-digit cap) handles amounts like 12500.00 correctly.
+    // The old two-alternative approach caused \d{1,3} to match "125" from "12500.00",
+    // making the engine never try the \d+ alternative.
+    // \d+(?:[.,]\d{3})* handles thousands separators; (?:[.,]\d{1,2})? handles 1-2 decimal places.
     private val amountRegex = Regex(
-        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\b""",
+        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
         RegexOption.IGNORE_CASE
     )
 
+    // Fix #2: removed overly aggressive \d{7,} pattern that was filtering large valid amounts.
+    // A proper phone number requires structural separators between digit groups.
     private val phonePatterns = listOf(
-        Regex("""(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{4}"""),  // Phone formats
-        Regex("""\d{7,}"""),  // 7+ consecutive digits (phone-like)
+        Regex("""(?:\+?\d{1,3}[-.\s])?\(?\d{2,4}\)?[-.\s]\d{3,4}[-.\s]\d{4}"""),
     )
 
     private val datePatterns = listOf(
@@ -71,18 +91,19 @@ class AmountDetector {
         Regex("""\d{1,2}[-/]\d{1,2}[-/]\d{2,4}"""), // DD/MM/YYYY
     )
 
+    // Lines containing these words near a keyword indicate it is NOT the grand total
+    private val ignoreWords = listOf("precio", "sub", "ahorro", "descuento", "cambio", "su cambio", "vuelto")
+
     fun detect(visionText: Text): DetectionResult {
         // Layer 1: Keyword Match (Highest confidence)
         val keywordResult = findByKeywords(visionText.text)
         if (keywordResult != null) return DetectionResult(keywordResult, Confidence.HIGH)
 
-        // Layer 2: Positional Analysis (Medium confidence)
-        // We look for amounts in the bottom quarter of the image
+        // Layer 2: Positional Analysis — bottom 40% of image with keyword preference
         val positionalResult = findByPosition(visionText)
         if (positionalResult != null) return DetectionResult(positionalResult, Confidence.MEDIUM)
 
-        // Layer 3: Last Section Analysis (Medium confidence)
-        // If positional blocks fail, try searching in the last lines of the text
+        // Layer 3: Last half of text
         val lastSectionResult = findAmountInLastSection(visionText.text)
         if (lastSectionResult != null) return DetectionResult(lastSectionResult, Confidence.MEDIUM)
 
@@ -98,7 +119,6 @@ class AmountDetector {
         val keywordResult = findByKeywords(text)
         if (keywordResult != null) return DetectionResult(keywordResult, Confidence.HIGH)
 
-        // Layer 2 (text-only): Look for amounts in the last section of the text
         val lastSectionResult = findAmountInLastSection(text)
         if (lastSectionResult != null) return DetectionResult(lastSectionResult, Confidence.MEDIUM)
 
@@ -111,43 +131,64 @@ class AmountDetector {
     private fun findByKeywords(text: String): Double? {
         val lines = text.split("\n")
         val reversedLines = lines.asReversed()
-        val ignoreWords = listOf("precio", "sub", "ahorro", "descuento", "cambio", "su cambio", "vuelto")
 
-        // Search bottom-up: last occurrence of a keyword is more likely the final total
         totalKeywords.forEach { keyword ->
             reversedLines.forEachIndexed { i, line ->
-                if (line.contains(keyword, ignoreCase = true)) {
-                    // Skip if the line has words indicating it's not the final total (like 'precio total' or 'sub total')
-                    if (ignoreWords.any { line.contains(it, ignoreCase = true) } && !keyword.contains("sub", ignoreCase = true)) {
-                        return@forEachIndexed // Continue to the next line in reversedLines
-                    }
+                if (!line.contains(keyword, ignoreCase = true)) return@forEachIndexed
 
-                    // Try to find amount on the same line
-                    val substring = line.substring(line.indexOf(keyword, ignoreCase = true))
-                    val match = amountRegex.find(substring)
-                    
-                    if (match != null && !looksLikeNonMonetary(match.value)) {
-                        parseAmount(match.groupValues[2])?.let { 
-                            if (it > 0.0) return it 
-                        }
-                    }
-
-                    // If not found on the same line, check the next few lines (which are visually "below" on the receipt)
-                    // The "below" lines are the previous indices in the reversed list.
-                    // Loop from i - 1 down to i - 7 to catch amounts pushed further down by MLKit grouping
-                    val startSearch = maxOf(0, i - 7)
-                    for (j in (i - 1 downTo startSearch)) {
-                        val nextLine = reversedLines[j]
-                        val nextMatches = amountRegex.findAll(nextLine)
-                        for (nextMatch in nextMatches) {
-                            if (!looksLikeNonMonetary(nextMatch.value)) {
-                                parseAmount(nextMatch.groupValues[2])?.let {
-                                    if (it > 0.0) return it
-                                }
-                            }
-                        }
-                    }
+                // Skip lines that suggest this is a sub-total or price line, not the grand total
+                if (ignoreWords.any { line.contains(it, ignoreCase = true) }) {
+                    return@forEachIndexed
                 }
+
+                // Check same line: try from keyword position first, then full line as fallback
+                // Fix #6: also search before the keyword on the same line
+                val amountOnLine = findAmountInLine(line, keyword)
+                if (amountOnLine != null) return amountOnLine
+
+                // Fix #3: look below the keyword (lines after it in original = lower index in reversed)
+                val startBelow = maxOf(0, i - 7)
+                for (j in (i - 1 downTo startBelow)) {
+                    val belowLine = reversedLines[j]
+                    val found = firstValidAmount(belowLine)
+                    if (found != null) return found
+                }
+
+                // Fix #3: look above the keyword as fallback (lines before it in original = higher index in reversed)
+                val endAbove = minOf(reversedLines.size - 1, i + 4)
+                for (j in (i + 1..endAbove)) {
+                    val aboveLine = reversedLines[j]
+                    val found = firstValidAmount(aboveLine)
+                    if (found != null) return found
+                }
+            }
+        }
+        return null
+    }
+
+    // Fix #6: search for amount starting from after the keyword, then fall back to the full line
+    private fun findAmountInLine(line: String, keyword: String): Double? {
+        val keywordIndex = line.indexOf(keyword, ignoreCase = true)
+
+        // Prefer amount to the right of the keyword
+        if (keywordIndex >= 0) {
+            val afterKeyword = line.substring(keywordIndex)
+            val match = amountRegex.find(afterKeyword)
+            if (match != null && !looksLikeNonMonetary(match.value)) {
+                val parsed = parseAmount(match.groupValues[2])
+                if (parsed != null && parsed > 0.0) return parsed
+            }
+        }
+
+        // Fallback: amount anywhere on the same line (e.g., "$50.00  TOTAL")
+        return firstValidAmount(line)
+    }
+
+    private fun firstValidAmount(line: String): Double? {
+        for (match in amountRegex.findAll(line)) {
+            if (!looksLikeNonMonetary(match.value)) {
+                val parsed = parseAmount(match.groupValues[2])
+                if (parsed != null && parsed > 0.0) return parsed
             }
         }
         return null
@@ -157,38 +198,48 @@ class AmountDetector {
         val blocks = visionText.textBlocks
         if (blocks.isEmpty()) return null
 
-        // Find image height estimate from blocks
         val maxHeight = blocks.mapNotNull { it.boundingBox?.bottom }.maxOrNull() ?: 1000
-        // Total amount is usually in the bottom quarter of the receipt
-        val bottomQuarterThreshold = (maxHeight * 0.75).toInt()
+        // Fix #4: expanded from bottom 25% to bottom 40% of the image
+        val bottomSectionThreshold = (maxHeight * 0.60).toInt()
 
-        val candidates = mutableListOf<Double>()
-        blocks.filter { (it.boundingBox?.top ?: 0) > bottomQuarterThreshold }.forEach { block ->
+        data class Candidate(val amount: Double, val hasKeyword: Boolean, val yPos: Int)
+
+        val candidates = mutableListOf<Candidate>()
+        blocks.filter { (it.boundingBox?.top ?: 0) > bottomSectionThreshold }.forEach { block ->
+            // Fix #5: track whether this block contains a keyword to prefer it over generic max
+            val blockLower = block.text.lowercase()
+            val hasKeyword = totalKeywords.any { blockLower.contains(it) }
+            val yPos = block.boundingBox?.top ?: 0
             amountRegex.findAll(block.text).forEach { match ->
                 if (!looksLikeNonMonetary(match.value)) {
-                    parseAmount(match.groupValues[2])?.let { candidates.add(it) }
+                    parseAmount(match.groupValues[2])?.let { amount ->
+                        candidates.add(Candidate(amount, hasKeyword, yPos))
+                    }
                 }
             }
         }
-        
-        return candidates.maxOrNull()
+
+        if (candidates.isEmpty()) return null
+
+        // Fix #5: prefer amounts in keyword-bearing blocks; among equal-priority pick the largest
+        val keywordCandidates = candidates.filter { it.hasKeyword }
+        if (keywordCandidates.isNotEmpty()) return keywordCandidates.maxOf { it.amount }
+        return candidates.maxOf { it.amount }
     }
 
     private fun findMaxAmount(text: String): Double? {
         val lines = text.split("\n")
         val halfPoint = lines.size / 2
-        
-        // Prefer amounts from the bottom half of the text
+
         val bottomHalfText = lines.drop(halfPoint).joinToString("\n")
         val bottomResult = amountRegex.findAll(bottomHalfText)
             .filter { !looksLikeNonMonetary(it.value) }
             .mapNotNull { parseAmount(it.groupValues[2]) }
-            .filter { it in 0.01..999999.99 } // Sanity check
+            .filter { it in 0.01..999999.99 }
             .maxOrNull()
-        
+
         if (bottomResult != null) return bottomResult
-        
-        // Fallback to full text
+
         return amountRegex.findAll(text)
             .filter { !looksLikeNonMonetary(it.value) }
             .mapNotNull { parseAmount(it.groupValues[2]) }
@@ -198,9 +249,10 @@ class AmountDetector {
 
     private fun findAmountInLastSection(text: String): Double? {
         val lines = text.split("\n")
-        val lastThird = lines.takeLast(maxOf(lines.size / 3, 1))
+        // Fix #8: extended from last 33% to last 50% for better coverage on long receipts
+        val lastHalf = lines.takeLast(maxOf(lines.size / 2, 3))
         val candidates = mutableListOf<Double>()
-        lastThird.forEach { line ->
+        lastHalf.forEach { line ->
             amountRegex.findAll(line).forEach { match ->
                 if (!looksLikeNonMonetary(match.value)) {
                     parseAmount(match.groupValues[2])?.let { candidates.add(it) }
@@ -211,57 +263,42 @@ class AmountDetector {
     }
 
     private fun looksLikeNonMonetary(text: String): Boolean {
-        // Check if the match is part of a phone number pattern
         if (phonePatterns.any { it.containsMatchIn(text) }) return true
-        // Check if it's a date
         if (datePatterns.any { it.containsMatchIn(text) }) return true
-        
         return false
     }
 
     private fun parseAmount(amountStr: String): Double? {
-        // Remove everything except numbers, dots and commas
         var clean = amountStr.replace("[^0-9,.]".toRegex(), "")
-        
         if (clean.isEmpty()) return null
 
-        // If it has both dots and commas
         if (clean.contains(".") && clean.contains(",")) {
             val lastDot = clean.lastIndexOf(".")
             val lastComma = clean.lastIndexOf(",")
             if (lastDot > lastComma) {
-                // Comma is thousands, dot is decimal (e.g., 1,250.50)
+                // Comma is thousands separator, dot is decimal (e.g., 1,250.50)
                 clean = clean.replace(",", "")
             } else {
-                // Dot is thousands, comma is decimal (e.g., 1.250,50)
+                // Dot is thousands separator, comma is decimal (e.g., 1.250,50)
                 clean = clean.replace(".", "").replace(",", ".")
             }
         } else {
-            // Only one type of separator (or none)
             val lastSeparatorIndex = if (clean.contains(",")) clean.lastIndexOf(",") else clean.lastIndexOf(".")
-            
             if (lastSeparatorIndex != -1) {
                 val charsAfter = clean.length - lastSeparatorIndex - 1
-                // Most currency formats have 2 decimal places. 
-                // If there are exactly 3 digits after a single separator, it's ambiguous.
-                // In context of OCR of tickets, if it's a dot and 2 digits, it's decimal.
-                // If it's a dot and 3 digits (e.g., 1.500), it's likely thousands in some locales, 
-                // but without context we'll assume decimal unless there are more thousands separators.
-                
                 if (charsAfter == 3 && clean.count { it == ',' || it == '.' } > 1) {
-                    // Multiple separators of same type followed by 3 digits -> thousands
+                    // Multiple separators followed by 3 digits → thousands only (e.g., 1,234,567)
                     clean = clean.replace(",", "").replace(".", "")
                 } else if (charsAfter <= 2) {
-                    // 1 or 2 digits after -> decimal
+                    // Fix #1: 1 or 2 digits after separator → decimal (was only accepting exactly 2)
                     clean = clean.replace(",", ".")
                 } else {
-                    // More than 3 or specifically 3 but no other separators -> thousands (remove it)
+                    // 3+ digits after single separator → treat as thousands
                     clean = clean.replace(",", "").replace(".", "")
                 }
             }
         }
-        
+
         return clean.toDoubleOrNull()
     }
 }
-

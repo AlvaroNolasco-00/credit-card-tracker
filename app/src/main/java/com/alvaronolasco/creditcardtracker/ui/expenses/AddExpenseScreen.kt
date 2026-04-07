@@ -2,13 +2,17 @@ package com.alvaronolasco.creditcardtracker.ui.expenses
 
 import android.Manifest
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.navigation.NavController
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -27,13 +31,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -47,6 +61,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -444,6 +460,19 @@ fun AddExpenseScreen(
                 )
             }
 
+            if (uiState.ocrDialogState != OcrDialogState.NONE) {
+                OcrLowConfidenceDialog(
+                    dialogState = uiState.ocrDialogState,
+                    pendingAmount = uiState.ocrPendingAmount,
+                    imageUri = capturedImageUri,
+                    isProcessing = uiState.ocrProcessing,
+                    onConfirm = { viewModel.confirmOcrAmount() },
+                    onShowCrop = { viewModel.showOcrCropMode() },
+                    onCropConfirm = { bitmap -> viewModel.processOcrFromCrop(bitmap) },
+                    onDismiss = { viewModel.dismissOcrDialog() }
+                )
+            }
+
             Text(
                 "Recibo",
                 style = MaterialTheme.typography.titleMedium,
@@ -488,6 +517,22 @@ fun AddExpenseScreen(
                     icon = Icons.Default.PhotoLibrary,
                     modifier = Modifier.weight(1f)
                 )
+            }
+
+            if (capturedImageUri != null) {
+                TextButton(
+                    onClick = { viewModel.showOcrCropMode() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.ocrProcessing,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "Seleccionar área del monto manualmente",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
             Spacer(Modifier.height(Dimensions.SpacingSm))
@@ -699,6 +744,262 @@ private fun DatePickerSection(
                 Icons.Default.DateRange,
                 contentDescription = "Seleccionar fecha",
                 tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun OcrLowConfidenceDialog(
+    dialogState: OcrDialogState,
+    pendingAmount: Double?,
+    imageUri: Uri?,
+    isProcessing: Boolean,
+    onConfirm: () -> Unit,
+    onShowCrop: () -> Unit,
+    onCropConfirm: (Bitmap) -> Unit,
+    onDismiss: () -> Unit
+) {
+    when (dialogState) {
+        OcrDialogState.CONFIRM -> AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Valor detectado") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (pendingAmount != null) {
+                        Text(
+                            text = "$${String.format("%.2f", pendingAmount)}",
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "El valor detectado tiene baja confianza. ¿Es el total correcto?",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        Text(
+                            text = "No se pudo detectar el total automáticamente.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (pendingAmount != null) {
+                    TextButton(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) { Text("Sí, está bien") }
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = onShowCrop,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) { Text("Seleccionar área") }
+                    TextButton(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) { Text("Cancelar") }
+                }
+            }
+        )
+
+        OcrDialogState.CROP -> if (imageUri != null) {
+            Dialog(onDismissRequest = onDismiss) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.85f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    ImageCropCanvas(
+                        imageUri = imageUri,
+                        isProcessing = isProcessing,
+                        onCropConfirm = onCropConfirm,
+                        onCancel = onDismiss
+                    )
+                }
+            }
+        }
+
+        OcrDialogState.NONE -> Unit
+    }
+}
+
+@Composable
+private fun ImageCropCanvas(
+    imageUri: Uri,
+    isProcessing: Boolean,
+    onCropConfirm: (Bitmap) -> Unit,
+    onCancel: () -> Unit
+) {
+    val context = LocalContext.current
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var composableSize by remember { mutableStateOf(IntSize.Zero) }
+    var selStart by remember { mutableStateOf<Offset?>(null) }
+    var selEnd by remember { mutableStateOf<Offset?>(null) }
+
+    LaunchedEffect(imageUri) {
+        withContext(Dispatchers.IO) {
+            bitmap = try {
+                context.contentResolver.openInputStream(imageUri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    // Compute the actual image rect within the canvas (letterbox/pillarbox fit)
+    val imageRect: Rect? = remember(bitmap, composableSize) {
+        val bmp = bitmap ?: return@remember null
+        if (composableSize.width == 0 || composableSize.height == 0) return@remember null
+        val bmpRatio = bmp.width.toFloat() / bmp.height
+        val canvasRatio = composableSize.width.toFloat() / composableSize.height
+        val drawWidth: Float
+        val drawHeight: Float
+        if (bmpRatio > canvasRatio) {
+            drawWidth = composableSize.width.toFloat()
+            drawHeight = composableSize.width / bmpRatio
+        } else {
+            drawHeight = composableSize.height.toFloat()
+            drawWidth = composableSize.height * bmpRatio
+        }
+        val ox = (composableSize.width - drawWidth) / 2f
+        val oy = (composableSize.height - drawHeight) / 2f
+        Rect(ox, oy, ox + drawWidth, oy + drawHeight)
+    }
+
+    val hasSelection = remember(selStart, selEnd) {
+        val s = selStart; val e = selEnd
+        s != null && e != null &&
+            maxOf(s.x, e.x) - minOf(s.x, e.x) > 10f &&
+            maxOf(s.y, e.y) - minOf(s.y, e.y) > 10f
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Dibuja un rectángulo alrededor del total",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .onSizeChanged { composableSize = it }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            selStart = offset
+                            selEnd = offset
+                        },
+                        onDrag = { change, _ ->
+                            selEnd = change.position
+                        },
+                        onDragEnd = {}
+                    )
+                }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val bmp = bitmap ?: return@Canvas
+                val rect = imageRect ?: return@Canvas
+
+                drawImage(
+                    image = bmp.asImageBitmap(),
+                    dstOffset = IntOffset(rect.left.toInt(), rect.top.toInt()),
+                    dstSize = IntSize(rect.width.toInt(), rect.height.toInt())
+                )
+
+                val s = selStart; val e = selEnd
+                if (s != null && e != null) {
+                    val left = minOf(s.x, e.x)
+                    val top = minOf(s.y, e.y)
+                    val width = maxOf(s.x, e.x) - left
+                    val height = maxOf(s.y, e.y) - top
+                    if (width > 4f && height > 4f) {
+                        drawRect(
+                            color = Color(0x330000FF),
+                            topLeft = Offset(left, top),
+                            size = Size(width, height)
+                        )
+                        drawRect(
+                            color = Color.Blue,
+                            topLeft = Offset(left, top),
+                            size = Size(width, height),
+                            style = Stroke(width = 3f)
+                        )
+                    }
+                }
+            }
+
+            if (bitmap == null || isProcessing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimensions.SpacingMd)
+        ) {
+            AppButton(
+                text = "Validar área",
+                onClick = {
+                    val bmp = bitmap ?: return@AppButton
+                    val rect = imageRect ?: return@AppButton
+                    val s = selStart ?: return@AppButton
+                    val e = selEnd ?: return@AppButton
+
+                    val scaleX = bmp.width / rect.width
+                    val scaleY = bmp.height / rect.height
+
+                    val selLeft = minOf(s.x, e.x)
+                    val selTop = minOf(s.y, e.y)
+                    val selRight = maxOf(s.x, e.x)
+                    val selBottom = maxOf(s.y, e.y)
+
+                    val cropLeft = ((selLeft - rect.left) * scaleX).toInt().coerceIn(0, bmp.width - 1)
+                    val cropTop = ((selTop - rect.top) * scaleY).toInt().coerceIn(0, bmp.height - 1)
+                    val cropRight = ((selRight - rect.left) * scaleX).toInt().coerceIn(cropLeft + 1, bmp.width)
+                    val cropBottom = ((selBottom - rect.top) * scaleY).toInt().coerceIn(cropTop + 1, bmp.height)
+
+                    val cropped = Bitmap.createBitmap(
+                        bmp,
+                        cropLeft,
+                        cropTop,
+                        cropRight - cropLeft,
+                        cropBottom - cropTop
+                    )
+                    onCropConfirm(cropped)
+                },
+                enabled = hasSelection && !isProcessing,
+                modifier = Modifier.weight(1f)
+            )
+            AppOutlinedButton(
+                text = "Cancelar",
+                onClick = onCancel,
+                modifier = Modifier.weight(1f)
             )
         }
     }
