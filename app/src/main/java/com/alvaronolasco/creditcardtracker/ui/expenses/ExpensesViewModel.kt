@@ -46,6 +46,11 @@ class ExpensesViewModel @Inject constructor(
 
     private val ocrProcessor = OcrProcessor(context)
 
+    override fun onCleared() {
+        super.onCleared()
+        ocrProcessor.close()
+    }
+
     init {
         loadCategories()
         loadAllCards()
@@ -91,7 +96,7 @@ class ExpensesViewModel @Inject constructor(
             _uiState.update { it.copy(ocrProcessing = true) }
             val result = ocrProcessor.processImage(uri)
             when (result.confidence) {
-                Confidence.HIGH, Confidence.MEDIUM -> _uiState.update {
+                Confidence.VERIFIED, Confidence.HIGH, Confidence.MEDIUM -> _uiState.update {
                     it.copy(ocrResultAmount = result.detectedAmount, ocrProcessing = false)
                 }
                 Confidence.LOW, Confidence.NONE -> _uiState.update {
@@ -128,7 +133,7 @@ class ExpensesViewModel @Inject constructor(
             _uiState.update { it.copy(ocrProcessing = true) }
             val result = ocrProcessor.processImageBitmap(bitmap)
             when (result.confidence) {
-                Confidence.HIGH, Confidence.MEDIUM -> _uiState.update {
+                Confidence.VERIFIED, Confidence.HIGH, Confidence.MEDIUM -> _uiState.update {
                     it.copy(
                         ocrResultAmount = result.detectedAmount,
                         ocrProcessing = false,

@@ -10,13 +10,33 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
-- 
+- ✅ Exclusiones mejoradas en `looksLikeNonMonetary()`: porcentajes (IVA, descuentos) y códigos postales (C.P., ZIP)
+- ✅ Sistema de pesos (scoring) unificado para detección OCR: acumula candidatos de 5 capas y elige ganador por puntuación
+  - Base scores por capa (Geometric 50, Keyword 40, Position 25, LastSection 15, Fallback 5)
+  - Bonificaciones: símbolo de moneda (+30), monto máximo en bottom 30% (+20), keyword en bloque (+15)
+  - Mapeo score → Confidence (70+→HIGH, 40+→MEDIUM, 20+→LOW)
+- ✅ Preprocesamiento nativo de imagen en OCR: escala de grises + amplificación de contraste para mejorar precisión en recibos de bajo contraste (+15-20% accuracy)
 
 ### Changed
-- 
+- 🔧 **OCR Detection Pipeline:** Reemplazo de "first-wins" con scoring unificado — todas las capas acumulan candidatos
+  - Métodos detectores ahora retornan `List<ScoredCandidate>` en lugar de `Double?`
+  - Currency symbol en regex (grupo 1) ahora se usa para priorizar (+30 puntos automáticos)
+  - Métodos renombrados: `findByKeywords()` → `findByKeywordsScored()`, etc.
+- 🔧 **OCR Parsing:** Reemplazo de normalización manual con `java.text.NumberFormat` de multi-locale — soporta dinámicamente 1,250.50 (US/MX) y 1.250,50 (EU) sin hardcoding
+- 📝 Optimización de `parseAmount()`: 25 líneas → 11, uso de `ParsePosition` para garantizar parseo completo
 
 ### Fixed
-- 
+- 🐛 Ruido de OCR: Porcentajes (ej. "16%") y códigos postales ya no se capturan como montos válidos
+- 🐛 Robustez: Eliminados edge cases en parsing de montos con separadores inconsistentes
+- 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)
+
+**ADRs:** 
+- [ADR-036](docs/adr/architecture/ADR-036-ocr-amount-scoring-system.md) — Unified scoring system
+- [ADR-034](docs/adr/architecture/ADR-034-ocr-parsing-robustness.md) — Robustez de parsing
+- [ADR-033](docs/adr/architecture/ADR-033-geometric-ocr-alignment.md) — Alineación geométrica
+- [ADR-037](docs/adr/architecture/ADR-037-ocr-image-preprocessing.md) — Preprocesamiento de imagen
+
+**Archivos:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ocr/OcrProcessor.kt`
 
 ### Deprecated
 - 
@@ -25,7 +45,7 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 
 
 ### Security
-- 
+- 🔒 Implementar `Closeable` en `OcrProcessor` para prevenir memory leaks del ML Kit TextRecognizer. Llamada explícita a `.close()` en `ViewModel.onCleared()`. **[ADR-035](docs/adr/architecture/ADR-035-ocr-processor-lifecycle-management.md)**
 
 ---
 

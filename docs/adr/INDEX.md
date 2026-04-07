@@ -49,6 +49,11 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-030](ui/ADR-030-support-developer-feature.md) | Feature "Apoya al Desarrollador" con donaciones via enlaces externos | ui | Aceptado | 2026-03-31 |
 | [ADR-031](ui/ADR-031-budget-reminder-dialog.md) | Recordatorio de presupuesto mensual en Dashboard | ui | Aceptado | 2026-04-03 |
 | [ADR-032](ui/ADR-032-dashboard-reorganization.md) | Reorganización de Dashboard y Acceso a Apoyo al Desarrollador | ui | Aceptado | 2026-04-03 |
+| [ADR-033](architecture/ADR-033-geometric-ocr-alignment.md) | Alineación Geométrica en Detección de Montos OCR | architecture | Aceptado | 2026-04-07 |
+| [ADR-034](architecture/ADR-034-ocr-parsing-robustness.md) | OCR Amount Parsing Robustness — NumberFormat Localization & Noise Filtering | architecture | Aceptado | 2026-04-07 |
+| [ADR-035](architecture/ADR-035-ocr-processor-lifecycle-management.md) | OCR Processor Lifecycle Management — Prevención de Memory Leaks | architecture | Aceptado | 2026-04-07 |
+| [ADR-036](architecture/ADR-036-ocr-amount-scoring-system.md) | OCR Amount Detection — Unified Scoring System | architecture | Aceptado | 2026-04-07 |
+| [ADR-037](architecture/ADR-037-ocr-image-preprocessing.md) | Preprocesamiento de Imagen para OCR — Escala de Grises + Contraste Nativo | architecture | Aceptado | 2026-04-07 |
 
 ## Regla de escritura
 
