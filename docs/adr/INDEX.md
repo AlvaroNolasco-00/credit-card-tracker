@@ -54,6 +54,8 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-035](architecture/ADR-035-ocr-processor-lifecycle-management.md) | OCR Processor Lifecycle Management — Prevención de Memory Leaks | architecture | Aceptado | 2026-04-07 |
 | [ADR-036](architecture/ADR-036-ocr-amount-scoring-system.md) | OCR Amount Detection — Unified Scoring System | architecture | Aceptado | 2026-04-07 |
 | [ADR-037](architecture/ADR-037-ocr-image-preprocessing.md) | Preprocesamiento de Imagen para OCR — Escala de Grises + Contraste Nativo | architecture | Aceptado | 2026-04-07 |
+| [ADR-038](architecture/ADR-038-ocr-accuracy-improvements.md) | OCR Accuracy Improvements — Error Correction, Column Detection & Confidence Filtering | architecture | Aceptado | 2026-04-07 |
+| [ADR-039](architecture/ADR-039-ocr-precision-edge-cases.md) | OCR Precision Edge Cases — Rightmost Tolerance, Long Number Filtering & Bottom 30% Unification | architecture | Aceptado | 2026-04-07 |
 
 ## Regla de escritura
 

@@ -136,6 +136,7 @@ class AmountDetector {
 
     // ── Base scores per detection layer ──────────────────────────────────────
     private val SCORE_GEOMETRIC_ALIGN = 50  // same row as keyword (spatial)
+    private val SCORE_COLUMN_ALIGNED  = 35  // multiple amounts aligned in price column
     private val SCORE_KEYWORD_MATCH   = 40  // keyword found in plain text
     private val SCORE_POSITION_BASED  = 25  // bottom 40% of image, no keyword
     private val SCORE_LAST_SECTION    = 15  // bottom 50% of text lines
@@ -145,6 +146,31 @@ class AmountDetector {
     private val BONUS_CURRENCY_SYMBOL    = 30  // regex group 1 has $, Q, USD, MXN…
     private val BONUS_LARGEST_IN_BOTTOM30 = 20  // largest amount in last 30% of lines
     private val BONUS_KEYWORD_IN_BLOCK   = 15  // position block also contains keyword
+
+    /**
+     * Modo de cálculo para bottom 30% - soporta tanto índice de línea como coordenada Y.
+     */
+    private sealed class Bottom30Mode {
+        data class ByLineIndex(val lineIndex: Int, val totalLines: Int) : Bottom30Mode()
+        data class ByPixelY(val yTop: Int, val maxY: Int) : Bottom30Mode()
+    }
+
+    /**
+     * Determina si una posición está en el bottom 30% del contenido.
+     * Unifica el cálculo para ambos modos: índice de línea (texto) y coordenada Y (visual).
+     */
+    private fun isInBottom30Percent(mode: Bottom30Mode): Boolean {
+        return when (mode) {
+            is Bottom30Mode.ByLineIndex -> {
+                val thresholdIndex = (mode.totalLines * 0.70).toInt()
+                mode.lineIndex >= thresholdIndex
+            }
+            is Bottom30Mode.ByPixelY -> {
+                val thresholdY = (mode.maxY * 0.70).toInt()
+                mode.yTop >= thresholdY
+            }
+        }
+    }
 
     // Fix #7: expanded keywords for Central American / Mexican market
     private val totalKeywords = listOf(
@@ -161,8 +187,9 @@ class AmountDetector {
     )
 
     // Fix #1: unified pattern — handles large amounts, thousands separators, 1-2 decimal places.
+    // MEJORA: Regex más flexible para montos con/sin espacio y con/sin separador de miles
     private val amountRegex = Regex(
-        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d+(?:[.,\s]+\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
+        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d{1,3}(?:[.,\s]?\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
         RegexOption.IGNORE_CASE
     )
 
@@ -174,6 +201,12 @@ class AmountDetector {
     private val datePatterns = listOf(
         Regex("""\d{4}[-/]\d{1,2}[-/]\d{1,2}"""),
         Regex("""\d{1,2}[-/]\d{1,2}[-/]\d{2,4}"""),
+    )
+
+    // Pattern para detectar cantidades de ítems (ej: "2 x $25", "3 pz $15")
+    private val quantityPattern = Regex(
+        """\d{1,3}\s*(?:x|un|pz|uds|qty|cant|cantidad)\s*[$€£¥Q]""",
+        RegexOption.IGNORE_CASE
     )
 
     private val subtotalKeywords = listOf(
@@ -199,6 +232,7 @@ class AmountDetector {
         val allCandidates = mutableListOf<ScoredCandidate>()
         allCandidates += findByKeywordsScored(fullText)
         allCandidates += findByGeometricAlignmentScored(visionText)
+        allCandidates += findColumnAlignedAmountsScored(visionText)
         allCandidates += findByPositionScored(visionText)
         allCandidates += findAmountInLastSectionScored(fullText)
         allCandidates += findLastAmountScored(fullText)
@@ -334,7 +368,9 @@ class AmountDetector {
      * strongest signal for a two-column receipt layout (keyword left | amount right).
      */
     private fun findByGeometricAlignmentScored(visionText: Text): List<ScoredCandidate> {
-        val allLines = visionText.textBlocks.flatMap { it.lines }
+        val allLines = visionText.textBlocks
+            .flatMap { it.lines }
+            .filter { it.confidence?.let { conf -> conf >= 0.5f } ?: true }  // Filter low-confidence lines
         if (allLines.isEmpty()) return emptyList()
         val results = mutableListOf<ScoredCandidate>()
 
@@ -383,11 +419,72 @@ class AmountDetector {
     }
 
     /**
+     * Layer 2.5: column-aligned — amounts aligned vertically in price column.
+     * Detects multiple amounts sharing similar right X coordinate (price column pattern).
+     * The rightmost amount in the bottom 30% is likely the total.
+     */
+    private fun findColumnAlignedAmountsScored(visionText: Text): List<ScoredCandidate> {
+        val allLines = visionText.textBlocks.flatMap { it.lines }
+        if (allLines.size < 3) return emptyList()  // Need several lines to detect pattern
+
+        val results = mutableListOf<ScoredCandidate>()
+
+        // Extract all lines containing valid amounts with their bounding boxes
+        val linesWithAmounts = allLines.mapNotNull { line ->
+            val lastMatch = amountRegex.findAll(line.text)
+                .lastOrNull { !looksLikeNonMonetary(it.value, line.text) }
+                ?.takeIf { match -> parseAmount(match.groupValues[2]) != null }
+
+            lastMatch?.let { match ->
+                val amount = parseAmount(match.groupValues[2])!!
+                val box = line.boundingBox
+                Triple(line, amount, box)
+            }
+        }.filter { it.third != null }  // Only lines with valid bounding box
+
+        if (linesWithAmounts.size < 2) return emptyList()
+
+        // Group by similar right X coordinate (bucket of 30px)
+        val rightXGroups = linesWithAmounts.groupBy { (_, _, box) ->
+            (box!!.right / 30) * 30  // Round to multiples of 30
+        }
+
+        // Find the group with the most amounts (likely price column)
+        val columnGroup = rightXGroups.maxByOrNull { it.value.size }?.takeIf { it.value.size >= 2 }
+            ?: return emptyList()
+
+        // Calculate Y limits for bottom 30% of image
+        val maxBottom = allLines.mapNotNull { it.boundingBox?.bottom }.maxOrNull() ?: return emptyList()
+
+        // Score each amount in the detected column
+        columnGroup.value.forEach { (line, amount, box) ->
+            val isInBottom30 = isInBottom30Percent(Bottom30Mode.ByPixelY(box!!.top, maxBottom))
+            val maxRight = columnGroup.value.maxOf { it.third!!.right }
+            val isRightmost = box.right >= maxRight - 15  // Tolerancia de 15px para variaciones de píxeles
+
+            var score = SCORE_COLUMN_ALIGNED
+            if (isInBottom30) score += 10
+            if (isRightmost) score += 15  // Rightmost in the column
+
+            results.add(ScoredCandidate(amount, score))
+        }
+
+        return results
+    }
+
+    /**
      * Layer 3: position-based — amounts in the bottom 40% of the image.
      * Blocks that also contain a total keyword get an extra bonus.
      */
     private fun findByPositionScored(visionText: Text): List<ScoredCandidate> {
         val blocks = visionText.textBlocks
+            .filter { block ->
+                // Filter blocks where average line confidence is >= 0.5
+                val lines = block.lines
+                if (lines.isEmpty()) return@filter false
+                val avgConfidence = lines.mapNotNull { it.confidence }.average()
+                avgConfidence >= 0.5
+            }
         if (blocks.isEmpty()) return emptyList()
 
         val maxHeight = blocks.mapNotNull { it.boundingBox?.bottom }.maxOrNull() ?: 1000
@@ -489,12 +586,17 @@ class AmountDetector {
      */
     private fun largestAmountInBottom30Percent(text: String): Double? {
         val lines = text.split("\n")
-        val startIdx = (lines.size * 0.70).toInt()
-        return lines.drop(startIdx).flatMap { line ->
-            amountRegex.findAll(line)
-                .filter { !looksLikeNonMonetary(it.value, line) }
-                .mapNotNull { parseAmount(it.groupValues[2]) }
-        }.maxOrNull()
+        return lines
+            .mapIndexed { index, line -> index to line }
+            .filter { (index, _) ->
+                isInBottom30Percent(Bottom30Mode.ByLineIndex(index, lines.size))
+            }
+            .flatMap { (_, line) ->
+                amountRegex.findAll(line)
+                    .filter { !looksLikeNonMonetary(it.value, line) }
+                    .mapNotNull { parseAmount(it.groupValues[2]) }
+            }
+            .maxOrNull()
     }
 
     /** Used only by [extractAmountByKeyword] → [verifyArithmetically]. */
@@ -527,7 +629,29 @@ class AmountDetector {
         if (Regex(Pattern.quote(matchStr.trim()) + """\s*%""").containsMatchIn(contextStr)) return true
 
         val cleanNum = matchStr.replace("[^0-9]".toRegex(), "")
-        if (cleanNum.length >= 6 && !matchStr.contains(".") && !matchStr.contains(",")) return true
+        val hasLongNumber = cleanNum.length >= 6 && !matchStr.contains(".") && !matchStr.contains(",")
+
+        // Solo rechazar números largos si NO tienen contexto monetario
+        if (hasLongNumber) {
+            // Verificar si tiene símbolo de moneda o está cerca de keyword de total
+            val hasCurrencySymbol = matchStr.matches(Regex(""".*[$€£¥₣₹Q].*""")) ||
+                                     contextStr.contains("$", ignoreCase = true) ||
+                                     contextStr.contains("Q", ignoreCase = true) ||
+                                     contextStr.contains("USD", ignoreCase = true) ||
+                                     contextStr.contains("MXN", ignoreCase = true) ||
+                                     contextStr.contains("GTQ", ignoreCase = true) ||
+                                     contextStr.contains("HNL", ignoreCase = true)
+            
+            val hasTotalKeyword = totalKeywords.any { contextStr.contains(it, ignoreCase = true) }
+            
+            // Si NO tiene moneda ni keyword, probablemente es ID/código postal
+            if (!hasCurrencySymbol && !hasTotalKeyword) return true
+        }
+
+        // Filtro nuevo: excluir números pequeños que son cantidades de ítems
+        if (cleanNum.length in 1..2 && quantityPattern.containsMatchIn(contextStr)) {
+            return true  // Es cantidad (ej: "2 x $25"), no monto total
+        }
 
         if (contextStr.isNotBlank()) {
             val lowerContext = contextStr.lowercase()
@@ -540,11 +664,41 @@ class AmountDetector {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // OCR Error Correction
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Corrige errores comunes de OCR en strings numéricos.
+     * ML Kit confunde: O/0, l/1, S/5, B/8, I/1, Z/2
+     */
+    private fun correctOcrErrors(text: String): String {
+        var corrected = text
+
+        // Patrones de contexto para aplicar correcciones solo en contextos numéricos
+        // Si hay dígitos cerca, aplicar correcciones agresivas
+        val hasNearbyDigits = text.any { it.isDigit() }
+
+        if (hasNearbyDigits) {
+            // Reemplazar letras que OCR confunde con dígitos
+            corrected = corrected
+                .replace(Regex("""[Oo]"""), "0")   // O → 0
+                .replace(Regex("""[lLI]"""), "1")  // l, L, I → 1
+                .replace(Regex("""[S]"""), "5")     // S → 5
+                .replace(Regex("""[B]"""), "8")     // B → 8
+                .replace(Regex("""[Z]"""), "2")     // Z → 2
+        }
+
+        return corrected
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Amount parsing
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun parseAmount(amountStr: String): Double? {
-        val clean = amountStr.replace("[^0-9,.]".toRegex(), "")
+        // CORRECCIÓN OCR: Aplicar antes de limpiar
+        val corrected = correctOcrErrors(amountStr)
+        val clean = corrected.replace("[^0-9,.]".toRegex(), "")
         if (clean.isEmpty()) return null
 
         // Try each locale in priority order (dot-decimal markets first, then comma-decimal).

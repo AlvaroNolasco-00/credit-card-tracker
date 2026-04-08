@@ -10,12 +10,15 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
-- ✅ Exclusiones mejoradas en `looksLikeNonMonetary()`: porcentajes (IVA, descuentos) y códigos postales (C.P., ZIP)
-- ✅ Sistema de pesos (scoring) unificado para detección OCR: acumula candidatos de 5 capas y elige ganador por puntuación
-  - Base scores por capa (Geometric 50, Keyword 40, Position 25, LastSection 15, Fallback 5)
+- ✅ Exclusiones mejoradas en `looksLikeNonMonetary()`: porcentajes (IVA, descuentos), códigos postales (C.P., ZIP) y cantidades de ítems ("2 x $25")
+- ✅ Sistema de pesos (scoring) unificado para detección OCR: acumula candidatos de 6 capas y elige ganador por puntuación
+  - Base scores por capa (Geometric 50, Column 35, Keyword 40, Position 25, LastSection 15, Fallback 5)
   - Bonificaciones: símbolo de moneda (+30), monto máximo en bottom 30% (+20), keyword en bloque (+15)
   - Mapeo score → Confidence (70+→HIGH, 40+→MEDIUM, 20+→LOW)
 - ✅ Preprocesamiento nativo de imagen en OCR: escala de grises + amplificación de contraste para mejorar precisión en recibos de bajo contraste (+15-20% accuracy)
+- ✅ Corrección de caracteres OCR (post-procesamiento): O→0, l/L/I→1, S→5, B→8, Z/2 para mitigar errores de ML Kit
+- ✅ Detección de columna de precios (Layer 2.5): detecta montos alineados verticalmente en tickets sin keywords explícitos
+- ✅ Filtro de confidence ML Kit: ignora líneas/bloques con confianza < 0.5 para reducir ruido en áreas borrosas
 
 ### Changed
 - 🔧 **OCR Detection Pipeline:** Reemplazo de "first-wins" con scoring unificado — todas las capas acumulan candidatos
@@ -31,6 +34,7 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)
 
 **ADRs:** 
+- [ADR-038](docs/adr/architecture/ADR-038-ocr-accuracy-improvements.md) — OCR Accuracy Improvements
 - [ADR-036](docs/adr/architecture/ADR-036-ocr-amount-scoring-system.md) — Unified scoring system
 - [ADR-034](docs/adr/architecture/ADR-034-ocr-parsing-robustness.md) — Robustez de parsing
 - [ADR-033](docs/adr/architecture/ADR-033-geometric-ocr-alignment.md) — Alineación geométrica
