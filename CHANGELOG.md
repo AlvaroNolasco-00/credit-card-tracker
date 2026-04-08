@@ -10,6 +10,14 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
+- ✅ Onboarding de primer lanzamiento con HorizontalPager de 7 páginas (ADR-041)
+  - 6 páginas de features: tarjetas, gastos, OCR, recordatorios, presupuesto, ingresos/widget
+  - Última página integra el input de nombre del usuario
+  - Botón "Omitir" (páginas 1–6) y "Comenzar" (última página)
+  - Solo se muestra una vez; preferencia `onboarding_completed` controla el flujo
+  - `startDestination` determinado en `MainActivity` antes de la primera composición
+- ✅ Opción "Ver tour de la app" en SupportScreen para revisar onboarding en cualquier momento
+  - Acceso sin interrumpir el flujo: regresa a SupportScreen al terminar en lugar de ir al dashboard
 - ✅ Mejora UX en pantalla de gasto: overlay oscuro + spinner + texto "Analizando recibo..." durante procesamiento OCR
   - Botones "Tomar Foto" y "Galería" deshabilitados mientras OCR está en curso
   - Botón "Guardar Gasto" deshabilitado durante OCR (previene guardado prematuro)

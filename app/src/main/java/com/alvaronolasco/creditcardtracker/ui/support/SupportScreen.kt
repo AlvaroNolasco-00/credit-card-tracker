@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.TipsAndUpdates
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,7 +43,10 @@ import com.alvaronolasco.creditcardtracker.ui.theme.MintGreen
 import com.alvaronolasco.creditcardtracker.ui.theme.SoftLime
 
 @Composable
-fun SupportScreen(onBack: () -> Unit) {
+fun SupportScreen(
+    onBack: () -> Unit,
+    onOnboardingClick: () -> Unit = {}
+) {
     val context = LocalContext.current
 
     Scaffold(
@@ -69,6 +73,12 @@ fun SupportScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             item { SupportHeader() }
+            item {
+                AppTourCard(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    onClick = onOnboardingClick
+                )
+            }
             item {
                 DeveloperMessageCard(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
@@ -140,6 +150,64 @@ private fun SupportHeader() {
                 color = ForestGreen,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppTourCard(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(SoftLime.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.TipsAndUpdates,
+                    contentDescription = null,
+                    tint = ForestGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Ver tour de la app",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Repasa todas las funciones disponibles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
             )
         }
     }

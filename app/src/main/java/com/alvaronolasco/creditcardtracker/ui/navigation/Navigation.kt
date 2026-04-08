@@ -16,11 +16,12 @@ import com.alvaronolasco.creditcardtracker.ui.income.IncomeSetupScreen
 import com.alvaronolasco.creditcardtracker.ui.income.AddEditIncomeScreen
 import com.alvaronolasco.creditcardtracker.ui.budget.BudgetScreen
 import com.alvaronolasco.creditcardtracker.ui.components.CameraPreviewScreen
+import com.alvaronolasco.creditcardtracker.ui.onboarding.OnboardingScreen
 import com.alvaronolasco.creditcardtracker.ui.support.SupportScreen
 import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 
 @Composable
-fun Navigation() {
+fun Navigation(startDestination: String = "dashboard") {
     val navController = rememberNavController()
     val pendingCardId by WidgetDeepLink.pendingCardId.collectAsState()
 
@@ -31,7 +32,21 @@ fun Navigation() {
         }
     }
 
-    NavHost(navController = navController, startDestination = "dashboard") {
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable("onboarding") {
+            val hasPreviousScreen = navController.previousBackStackEntry != null
+            OnboardingScreen(
+                onFinished = {
+                    if (hasPreviousScreen) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate("dashboard") {
+                            popUpTo("onboarding") { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
         composable("dashboard") {
             DashboardScreen(
                 onAddCard = { navController.navigate("add_card") },
@@ -47,7 +62,10 @@ fun Navigation() {
         }
 
         composable("support_developer") {
-            SupportScreen(onBack = { navController.popBackStack() })
+            SupportScreen(
+                onBack = { navController.popBackStack() },
+                onOnboardingClick = { navController.navigate("onboarding") }
+            )
         }
 
         composable(

@@ -12,13 +12,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.alvaronolasco.creditcardtracker.data.repository.UserPreferencesRepository
 import com.alvaronolasco.creditcardtracker.ui.navigation.Navigation
 import com.alvaronolasco.creditcardtracker.ui.theme.CreditCardTrackerTheme
 import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var userPreferencesRepository: UserPreferencesRepository
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
@@ -38,13 +43,15 @@ class MainActivity : ComponentActivity() {
             WidgetDeepLink.navigate(it)
         }
 
+        val startDestination = if (userPreferencesRepository.isOnboardingCompleted()) "dashboard" else "onboarding"
+
         setContent {
             CreditCardTrackerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Navigation()
+                    Navigation(startDestination = startDestination)
                 }
             }
         }

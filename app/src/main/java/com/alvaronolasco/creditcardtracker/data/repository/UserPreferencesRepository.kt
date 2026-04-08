@@ -54,10 +54,18 @@ class UserPreferencesRepository @Inject constructor(
         return prefs.getString(KEY_BUDGET_PROMPT_DISMISSED_MONTH, null) == monthYear
     }
 
+    fun isOnboardingCompleted(): Boolean =
+        prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+
+    fun setOnboardingCompleted() {
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, true).apply()
+    }
+
     companion object {
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_FIRST_LAUNCH_AT = "first_launch_at"
         private const val KEY_SUPPORT_DISMISSED_AT = "support_dismissed_at"
         private const val KEY_BUDGET_PROMPT_DISMISSED_MONTH = "budget_prompt_dismissed_month"
+        private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
     }
 }
