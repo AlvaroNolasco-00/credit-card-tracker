@@ -57,6 +57,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-038](architecture/ADR-038-ocr-accuracy-improvements.md) | OCR Accuracy Improvements — Error Correction, Column Detection & Confidence Filtering | architecture | Aceptado | 2026-04-07 |
 | [ADR-039](architecture/ADR-039-ocr-precision-edge-cases.md) | OCR Precision Edge Cases — Rightmost Tolerance, Long Number Filtering & Bottom 30% Unification | architecture | Aceptado | 2026-04-07 |
 | [ADR-040](architecture/ADR-040-ocr-correction-pipeline-and-perf-fixes.md) | OCR Pipeline Fixes — correctOcrErrors reubicado, regexes pre-compilados, NumberFormat cacheado & ignoreWords refinado | architecture | Aceptado | 2026-04-07 |
+| [ADR-041](ui/ADR-041-ocr-loading-state-ux.md) | OCR Loading State UX Improvement — Overlay oscuro, spinner + texto descriptivo, deshabilitar botones conflictivos | ui | Aceptado | 2026-04-08 |
 
 ## Regla de escritura
 

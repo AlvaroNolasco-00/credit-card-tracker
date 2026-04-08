@@ -498,10 +498,29 @@ fun AddExpenseScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                         if (uiState.ocrProcessing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.Center),
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.55f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 3.dp,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                    Text(
+                                        text = "Analizando recibo...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -515,13 +534,15 @@ fun AddExpenseScreen(
                     text = "Tomar Foto",
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                     icon = Icons.Default.CameraAlt,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !uiState.ocrProcessing
                 )
                 AppOutlinedButton(
                     text = "Galería",
                     onClick = { galleryLauncher.launch("image/*") },
                     icon = Icons.Default.PhotoLibrary,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !uiState.ocrProcessing
                 )
             }
 
@@ -558,7 +579,7 @@ fun AddExpenseScreen(
                         onSuccess = onBack
                     )
                 },
-                enabled = amount.isNotBlank() && description.isNotBlank()
+                enabled = amount.isNotBlank() && description.isNotBlank() && !uiState.ocrProcessing
             )
 
             if (isEditMode) {

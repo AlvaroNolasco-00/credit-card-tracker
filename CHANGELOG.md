@@ -10,6 +10,10 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
+- ✅ Mejora UX en pantalla de gasto: overlay oscuro + spinner + texto "Analizando recibo..." durante procesamiento OCR
+  - Botones "Tomar Foto" y "Galería" deshabilitados mientras OCR está en curso
+  - Botón "Guardar Gasto" deshabilitado durante OCR (previene guardado prematuro)
+  - Previene flujos paralelos y race conditions
 - ✅ Exclusiones mejoradas en `looksLikeNonMonetary()`: porcentajes (IVA, descuentos), códigos postales (C.P., ZIP) y cantidades de ítems ("2 x $25")
 - ✅ Sistema de pesos (scoring) unificado para detección OCR: acumula candidatos de 6 capas y elige ganador por puntuación
   - Base scores por capa (Geometric 50, Column 35, Keyword 40, Position 25, LastSection 15, Fallback 5)
@@ -34,13 +38,16 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)
 
 **ADRs:** 
+- [ADR-041](docs/adr/ui/ADR-041-ocr-loading-state-ux.md) — OCR Loading State UX Improvement
 - [ADR-038](docs/adr/architecture/ADR-038-ocr-accuracy-improvements.md) — OCR Accuracy Improvements
 - [ADR-036](docs/adr/architecture/ADR-036-ocr-amount-scoring-system.md) — Unified scoring system
 - [ADR-034](docs/adr/architecture/ADR-034-ocr-parsing-robustness.md) — Robustez de parsing
 - [ADR-033](docs/adr/architecture/ADR-033-geometric-ocr-alignment.md) — Alineación geométrica
 - [ADR-037](docs/adr/architecture/ADR-037-ocr-image-preprocessing.md) — Preprocesamiento de imagen
 
-**Archivos:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ocr/OcrProcessor.kt`
+**Archivos:** 
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt` — Mejora de UX del estado de carga OCR
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/ocr/OcrProcessor.kt`
 
 ### Deprecated
 - 
