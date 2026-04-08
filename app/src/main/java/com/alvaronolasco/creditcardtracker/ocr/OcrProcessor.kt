@@ -16,7 +16,6 @@ import kotlinx.coroutines.tasks.await
 import java.text.NumberFormat
 import java.text.ParsePosition
 import java.util.Locale
-import java.util.regex.Pattern
 import java.io.Closeable
 
 enum class Confidence {
@@ -209,6 +208,21 @@ class AmountDetector {
         RegexOption.IGNORE_CASE
     )
 
+    // Fix #2: pre-compiled static regexes used inside looksLikeNonMonetary() hot path.
+    // Previously created on every invocation; now allocated once per AmountDetector instance.
+    private val currencyInStringRegex = Regex(""".*[$€£¥₣₹Q].*""")
+
+    // Fix #3: NumberFormat instances cached per AmountDetector.
+    // parseAmount() was creating 5 instances on every call; AmountDetector is created
+    // once per processImage() call so there is no threading concern.
+    private val localeFormatters: List<NumberFormat> = listOf(
+        Locale.US,
+        Locale("es", "MX"),
+        Locale("es", "GT"),
+        Locale("es", "HN"),
+        Locale.GERMANY,
+    ).map { NumberFormat.getNumberInstance(it) }
+
     private val subtotalKeywords = listOf(
         "subtotal", "sub total", "sub-total",
         "antes de impuesto", "antes de iva", "importe bruto",
@@ -220,7 +234,12 @@ class AmountDetector {
         "impuesto", "impuestos", "tax", "gst", "vat", "isr"
     )
 
-    private val ignoreWords = listOf("precio", "sub", "ahorro", "descuento", "cambio", "su cambio", "vuelto")
+    // Fix #4: removed "sub" (too broad — matches "subscription", "subway", etc.).
+    // Subtotal variants are already handled explicitly below.
+    private val ignoreWords = listOf(
+        "precio", "ahorro", "descuento", "cambio", "su cambio", "vuelto",
+        "subtotal", "sub total", "sub-total"
+    )
 
     // ─────────────────────────────────────────────────────────────────────────
     // Public API
@@ -389,7 +408,8 @@ class AmountDetector {
                 val keywordIdx = keywordLine.text.indexOf(keyword, ignoreCase = true)
                 val searchFrom = if (keywordIdx >= 0) keywordLine.text.substring(keywordIdx)
                                  else keywordLine.text
-                amountRegex.findAll(searchFrom)
+                // Fix #1: use findAmountsInLine so OCR errors are corrected before matching
+                findAmountsInLine(searchFrom)
                     .filter { !looksLikeNonMonetary(it.value, keywordLine.text) }
                     .mapNotNull { match ->
                         parseAmount(match.groupValues[2])?.let { amount ->
@@ -431,7 +451,7 @@ class AmountDetector {
 
         // Extract all lines containing valid amounts with their bounding boxes
         val linesWithAmounts = allLines.mapNotNull { line ->
-            val lastMatch = amountRegex.findAll(line.text)
+            val lastMatch = findAmountsInLine(line.text)  // Fix #1
                 .lastOrNull { !looksLikeNonMonetary(it.value, line.text) }
                 ?.takeIf { match -> parseAmount(match.groupValues[2]) != null }
 
@@ -494,7 +514,7 @@ class AmountDetector {
         blocks.filter { (it.boundingBox?.top ?: 0) > threshold }.forEach { block ->
             val blockLower = block.text.lowercase()
             val keywordBonus = if (totalKeywords.any { blockLower.contains(it) }) BONUS_KEYWORD_IN_BLOCK else 0
-            amountRegex.findAll(block.text).forEach { match ->
+            findAmountsInLine(block.text).forEach { match ->  // Fix #1
                 if (!looksLikeNonMonetary(match.value, block.text)) {
                     parseAmount(match.groupValues[2])?.let { amount ->
                         val currencyBonus = if (match.groupValues[1].isNotBlank()) BONUS_CURRENCY_SYMBOL else 0
@@ -512,7 +532,7 @@ class AmountDetector {
         val lastHalf = lines.takeLast(maxOf(lines.size / 2, 3))
         val results = mutableListOf<ScoredCandidate>()
         lastHalf.forEach { line ->
-            amountRegex.findAll(line).forEach { match ->
+            findAmountsInLine(line).forEach { match ->  // Fix #1
                 if (!looksLikeNonMonetary(match.value, line)) {
                     parseAmount(match.groupValues[2])?.let { amount ->
                         val currencyBonus = if (match.groupValues[1].isNotBlank()) BONUS_CURRENCY_SYMBOL else 0
@@ -528,7 +548,7 @@ class AmountDetector {
     private fun findLastAmountScored(text: String): List<ScoredCandidate> {
         val results = mutableListOf<ScoredCandidate>()
         text.split("\n").forEach { line ->
-            amountRegex.findAll(line).forEach { match ->
+            findAmountsInLine(line).forEach { match ->  // Fix #1
                 if (!looksLikeNonMonetary(match.value, line)) {
                     parseAmount(match.groupValues[2])?.let { amount ->
                         val currencyBonus = if (match.groupValues[1].isNotBlank()) BONUS_CURRENCY_SYMBOL else 0
@@ -552,7 +572,7 @@ class AmountDetector {
         val keywordIndex = line.indexOf(keyword, ignoreCase = true)
         if (keywordIndex >= 0) {
             val afterKeyword = line.substring(keywordIndex)
-            val match = amountRegex.findAll(afterKeyword)
+            val match = findAmountsInLine(afterKeyword)  // Fix #1
                 .filter { !looksLikeNonMonetary(it.value, line) }
                 .lastOrNull { parseAmount(it.groupValues[2]) != null }
             if (match != null) {
@@ -570,7 +590,7 @@ class AmountDetector {
      * Currency symbol in the match adds [BONUS_CURRENCY_SYMBOL] to [baseScore].
      */
     private fun lastScoredCandidateOnLine(line: String, baseScore: Int): ScoredCandidate? {
-        for (match in amountRegex.findAll(line).toList().asReversed()) {
+        for (match in findAmountsInLine(line).toList().asReversed()) {  // Fix #1
             if (!looksLikeNonMonetary(match.value, line)) {
                 val amount = parseAmount(match.groupValues[2]) ?: continue
                 val currencyBonus = if (match.groupValues[1].isNotBlank()) BONUS_CURRENCY_SYMBOL else 0
@@ -592,7 +612,7 @@ class AmountDetector {
                 isInBottom30Percent(Bottom30Mode.ByLineIndex(index, lines.size))
             }
             .flatMap { (_, line) ->
-                amountRegex.findAll(line)
+                findAmountsInLine(line)  // Fix #1
                     .filter { !looksLikeNonMonetary(it.value, line) }
                     .mapNotNull { parseAmount(it.groupValues[2]) }
             }
@@ -601,7 +621,7 @@ class AmountDetector {
 
     /** Used only by [extractAmountByKeyword] → [verifyArithmetically]. */
     private fun lastValidAmountOnLine(line: String): Double? {
-        for (match in amountRegex.findAll(line).toList().asReversed()) {
+        for (match in findAmountsInLine(line).toList().asReversed()) {  // Fix #1
             if (!looksLikeNonMonetary(match.value, line)) {
                 val parsed = parseAmount(match.groupValues[2])
                 if (parsed != null) return parsed
@@ -625,16 +645,22 @@ class AmountDetector {
         if (phonePatterns.any { it.containsMatchIn(matchStr) }) return true
         if (datePatterns.any { it.containsMatchIn(matchStr) }) return true
 
+        // Fix #2: replaced dynamic Regex(Pattern.quote(...)) with plain string search.
         // Exclude values used as percentage rates (e.g. "16%", "12.5% IVA")
-        if (Regex(Pattern.quote(matchStr.trim()) + """\s*%""").containsMatchIn(contextStr)) return true
+        val trimmed = matchStr.trim()
+        val idx = contextStr.indexOf(trimmed)
+        if (idx >= 0) {
+            val afterMatch = contextStr.substring(idx + trimmed.length).trimStart()
+            if (afterMatch.startsWith("%")) return true
+        }
 
         val cleanNum = matchStr.replace("[^0-9]".toRegex(), "")
         val hasLongNumber = cleanNum.length >= 6 && !matchStr.contains(".") && !matchStr.contains(",")
 
         // Solo rechazar números largos si NO tienen contexto monetario
         if (hasLongNumber) {
-            // Verificar si tiene símbolo de moneda o está cerca de keyword de total
-            val hasCurrencySymbol = matchStr.matches(Regex(""".*[$€£¥₣₹Q].*""")) ||
+            // Fix #2: use pre-compiled currencyInStringRegex instead of inline Regex()
+            val hasCurrencySymbol = matchStr.matches(currencyInStringRegex) ||
                                      contextStr.contains("$", ignoreCase = true) ||
                                      contextStr.contains("Q", ignoreCase = true) ||
                                      contextStr.contains("USD", ignoreCase = true) ||
@@ -668,6 +694,20 @@ class AmountDetector {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
+     * Fix #1: Central helper that applies OCR error correction BEFORE running amountRegex.
+     *
+     * Previously, correctOcrErrors() was called inside parseAmount(), which receives the
+     * already-matched regex group (only digits + separators). A misread like "1O5.OO"
+     * would never match \d in the first place, so the correction was dead code.
+     *
+     * Now every detection layer calls this helper instead of amountRegex.findAll() directly.
+     * The corrected text is used ONLY for amount extraction — keyword searches continue to
+     * use the original text so that "TOTAL" is never mangled into "T0TA1".
+     */
+    private fun findAmountsInLine(text: String): Sequence<MatchResult> =
+        amountRegex.findAll(correctOcrErrors(text))
+
+    /**
      * Corrige errores comunes de OCR en strings numéricos.
      * ML Kit confunde: O/0, l/1, S/5, B/8, I/1, Z/2
      */
@@ -696,24 +736,18 @@ class AmountDetector {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun parseAmount(amountStr: String): Double? {
-        // CORRECCIÓN OCR: Aplicar antes de limpiar
-        val corrected = correctOcrErrors(amountStr)
-        val clean = corrected.replace("[^0-9,.]".toRegex(), "")
+        // Fix #1: correctOcrErrors() removed from here — it is now applied upstream
+        // (in findAmountsInLine) before the regex runs, so misread letters like O/0
+        // are corrected before the pattern tries to match digits.
+        val clean = amountStr.replace("[^0-9,.]".toRegex(), "")
         if (clean.isEmpty()) return null
 
-        // Try each locale in priority order (dot-decimal markets first, then comma-decimal).
+        // Fix #3: use cached localeFormatters instead of creating instances per call.
         // ParsePosition ensures the entire string is consumed — no silent partial parses.
-        val locales = listOf(
-            Locale.US,                  // 1,250.50  — USD receipts
-            Locale("es", "MX"),         // same conventions as US for MXN
-            Locale("es", "GT"),         // GTQ (Guatemala)
-            Locale("es", "HN"),         // HNL (Honduras)
-            Locale.GERMANY,             // 1.250,50  — European/some Latin American formats
-        )
-        for (locale in locales) {
+        val pos = ParsePosition(0)
+        for (nf in localeFormatters) {
             try {
-                val nf = NumberFormat.getNumberInstance(locale)
-                val pos = ParsePosition(0)
+                pos.index = 0
                 val result = nf.parse(clean, pos) ?: continue
                 if (pos.index == clean.length) {          // full string consumed
                     val value = result.toDouble()
