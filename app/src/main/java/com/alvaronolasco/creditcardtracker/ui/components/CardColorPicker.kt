@@ -3,15 +3,20 @@ package com.alvaronolasco.creditcardtracker.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -136,7 +141,7 @@ private fun CustomColorButton(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = androidx.compose.material.icons.Icons.Default.Add,
+            imageVector = Icons.Default.Add,
             contentDescription = "Color personalizado",
             tint = if (isSelected) ForestGreen else Color.White,
             modifier = Modifier.size(20.dp)
@@ -154,7 +159,7 @@ private fun ColorPickerDialogContent(
     var value by remember { mutableStateOf(1f) }
 
     // Initialize from current color
-    androidx.compose.runtime.LaunchedEffect(initialColor) {
+    LaunchedEffect(initialColor) {
         val hsv = colorToHSV(initialColor)
         hue = hsv[0]
         saturation = hsv[1]
@@ -164,7 +169,7 @@ private fun ColorPickerDialogContent(
     val currentColor = Color.hsv(hue, saturation, value)
 
     // Update parent when color changes
-    androidx.compose.runtime.LaunchedEffect(hue, saturation, value) {
+    LaunchedEffect(hue, saturation, value) {
         onColorChanged(currentColor)
     }
 
@@ -173,7 +178,7 @@ private fun ColorPickerDialogContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Color preview
-        androidx.compose.material3.Surface(
+        Surface(
             modifier = Modifier.size(200.dp),
             color = currentColor,
             shape = MaterialTheme.shapes.medium

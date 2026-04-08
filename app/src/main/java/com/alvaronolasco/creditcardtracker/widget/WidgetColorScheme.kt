@@ -34,12 +34,12 @@ object WidgetColors {
         // For now, return a generic solid drawable
         // The widget should use cardColor() for the actual color
         return when {
-            isCloseToColor(colorInt, 0xFFFF4242) -> R.drawable.widget_card_red
-            isCloseToColor(colorInt, 0xFFFFFF42) -> R.drawable.widget_card_yellow
-            isCloseToColor(colorInt, 0xFF4265FF) -> R.drawable.widget_card_blue
-            isCloseToColor(colorInt, 0xFF42FF45) -> R.drawable.widget_card_green
-            isCloseToColor(colorInt, 0xFFD342FF) -> R.drawable.widget_card_purple
-            isCloseToColor(colorInt, 0xFFFF8C42) -> R.drawable.widget_card_orange
+            isCloseToColor(colorInt, 0xFFFF4242.toInt()) -> R.drawable.widget_card_red
+            isCloseToColor(colorInt, 0xFFFFFF42.toInt()) -> R.drawable.widget_card_yellow
+            isCloseToColor(colorInt, 0xFF4265FF.toInt()) -> R.drawable.widget_card_blue
+            isCloseToColor(colorInt, 0xFF42FF45.toInt()) -> R.drawable.widget_card_green
+            isCloseToColor(colorInt, 0xFFD342FF.toInt()) -> R.drawable.widget_card_purple
+            isCloseToColor(colorInt, 0xFFFF8C42.toInt()) -> R.drawable.widget_card_orange
             else -> R.drawable.widget_card_dark
         }
     }
