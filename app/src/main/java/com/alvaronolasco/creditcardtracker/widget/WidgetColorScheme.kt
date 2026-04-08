@@ -25,24 +25,33 @@ object WidgetColors {
     val urgentOnCard = Color(0xFFFFD0D0)  // Rojo claro sobre tarjeta
     val urgentColor = ColorProvider(Color(0xFFE57373))  // Para texto fuera de tarjeta
 
-    // Solid fallback (still used for small widget accent bar)
+    // Solid color for widgets
     fun cardColor(colorInt: Int) = ColorProvider(Color(colorInt))
 
-    // Gradient drawable selection — one per color family
+    // Return solid color as drawable - widgets now use solid colors
     @DrawableRes
     fun cardGradientDrawable(colorInt: Int): Int {
+        // For now, return a generic solid drawable
+        // The widget should use cardColor() for the actual color
+        return when {
+            isCloseToColor(colorInt, 0xFFFF4242) -> R.drawable.widget_card_red
+            isCloseToColor(colorInt, 0xFFFFFF42) -> R.drawable.widget_card_yellow
+            isCloseToColor(colorInt, 0xFF4265FF) -> R.drawable.widget_card_blue
+            isCloseToColor(colorInt, 0xFF42FF45) -> R.drawable.widget_card_green
+            isCloseToColor(colorInt, 0xFFD342FF) -> R.drawable.widget_card_purple
+            isCloseToColor(colorInt, 0xFFFF8C42) -> R.drawable.widget_card_orange
+            else -> R.drawable.widget_card_dark
+        }
+    }
+
+    private fun isCloseToColor(colorInt: Int, targetColor: Int, tolerance: Int = 40): Boolean {
         val r = (colorInt shr 16) and 0xFF
         val g = (colorInt shr 8) and 0xFF
         val b = colorInt and 0xFF
-        return when {
-            isClose(r, g, b, 0xFF, 0x42, 0x42) -> R.drawable.widget_card_red      // CardRed
-            isClose(r, g, b, 0xFF, 0xFF, 0x42) -> R.drawable.widget_card_yellow   // CardYellow
-            isClose(r, g, b, 0x42, 0x65, 0xFF) -> R.drawable.widget_card_blue     // CardBlue
-            isClose(r, g, b, 0x42, 0xFF, 0x45) -> R.drawable.widget_card_green    // CardGreen
-            isClose(r, g, b, 0xD3, 0x42, 0xFF) -> R.drawable.widget_card_purple   // CardPurple
-            isClose(r, g, b, 0xFF, 0x8C, 0x42) -> R.drawable.widget_card_orange   // CardOrange
-            else -> R.drawable.widget_card_dark
-        }
+        val tr = (targetColor shr 16) and 0xFF
+        val tg = (targetColor shr 8) and 0xFF
+        val tb = targetColor and 0xFF
+        return isClose(r, g, b, tr, tg, tb, tolerance)
     }
 
     private fun isClose(r: Int, g: Int, b: Int, tr: Int, tg: Int, tb: Int, tol: Int = 40): Boolean =

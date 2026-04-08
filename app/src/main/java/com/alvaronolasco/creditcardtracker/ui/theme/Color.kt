@@ -57,48 +57,12 @@ val SurfaceVariantDark = Color(0xFF242F28)
 val OnSurfaceVariantDark = Color(0xFFB0B0B0)
 val OutlineDark = Color(0xFF2C3A31)
 
-// Card Gradient Colors — Linear Gradients (top to bottom)
-
-// Red Card Gradient
-val CardRedLight = Color(0xFFFF4242)
-val CardRedMid = Color(0xFF852424)
-val CardRedDark = Color(0xFF531818)
-
-// Yellow Card Gradient
-val CardYellowLight = Color(0xFFFFFF42)
-val CardYellowMid = Color(0xFF857D24)
-val CardYellowDark = Color(0xFF535118)
-
-// Blue Card Gradient
-val CardBlueLight = Color(0xFF4265FF)
-val CardBlueMid = Color(0xFF243D85)
-val CardBlueDark = Color(0xFF181E53)
-
-// Green Card Gradient
-val CardGreenLight = Color(0xFF42FF45)
-val CardGreenMid = Color(0xFF298524)
-val CardGreenDark = Color(0xFF1F5318)
-
-// Purple Card Gradient
-val CardPurpleLight = Color(0xFFD342FF)
-val CardPurpleMid = Color(0xFF682485)
-val CardPurpleDark = Color(0xFF491853)
-
-// Legacy card colors (kept for backward compatibility)
-val CardBlue_Legacy = Color(0xFF34495E)
-val CardGreen_Legacy = ForestGreen
-val CardRed_Legacy = Color(0xFF7F4444)
-val CardYellow_Legacy = Color(0xFF9E8E5E)
-val CardPurple_Legacy = Color(0xFF5D4E75)
-val CardOrange_Legacy = Color(0xFF8E6A4E)
-val CardDark_Legacy = Color(0xFF1A1A1B)
-
-// Card picker colors — use gradient-compatible values so CardGradients shows correct gradient
-val CardBlue = CardBlueLight
-val CardGreen = CardGreenLight
-val CardRed = CardRedLight
-val CardYellow = CardYellowLight
-val CardPurple = CardPurpleLight
+// Card Solid Colors — Solid colors for card backgrounds
+val CardRed = Color(0xFFFF4242)
+val CardYellow = Color(0xFFFFFF42)
+val CardBlue = Color(0xFF4265FF)
+val CardGreen = Color(0xFF42FF45)
+val CardPurple = Color(0xFFD342FF)
 val CardOrange = Color(0xFFFF8C42)
 val CardDark = Color(0xFF2C2C3A)
 

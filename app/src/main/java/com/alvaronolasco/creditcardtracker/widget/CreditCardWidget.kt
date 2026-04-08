@@ -165,7 +165,7 @@ class CreditCardWidget : GlanceAppWidget() {
                     .width(4.dp)
                     .height(28.dp)
                     .cornerRadius(2.dp)
-                    .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
+                    .background(WidgetColors.cardColor(data.card.color))
             ) {}
             Spacer(GlanceModifier.width(8.dp))
             Column(modifier = GlanceModifier.defaultWeight()) {
@@ -219,7 +219,7 @@ class CreditCardWidget : GlanceAppWidget() {
                 .fillMaxWidth()
                 .height(72.dp)
                 .cornerRadius(14.dp)
-                .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
+                .background(WidgetColors.cardColor(data.card.color))
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
                 // Contenido principal
@@ -354,7 +354,7 @@ class CreditCardWidget : GlanceAppWidget() {
                 .fillMaxWidth()
                 .height(120.dp)
                 .cornerRadius(16.dp)
-                .background(ImageProvider(WidgetColors.cardGradientDrawable(data.card.color)))
+                .background(WidgetColors.cardColor(data.card.color))
                 .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {

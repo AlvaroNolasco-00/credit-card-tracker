@@ -29,6 +29,7 @@ import com.alvaronolasco.creditcardtracker.data.entity.NotificationConfig
 import com.alvaronolasco.creditcardtracker.ui.theme.*
 import com.alvaronolasco.creditcardtracker.ui.components.*
 import com.alvaronolasco.creditcardtracker.ui.theme.Dimensions
+import com.alvaronolasco.creditcardtracker.ui.components.CardColorPicker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,8 +50,6 @@ fun AddEditCardScreen(
     var selectedCardColor by remember { mutableStateOf(CardBlue) }
     
     var showDeleteDialog by remember { mutableStateOf(false) }
-
-    val colors = listOf(CardBlue, CardGreen, CardRed, CardYellow, CardPurple, CardOrange, CardDark)
 
     LaunchedEffect(cardId) {
         if (cardId != null) {
@@ -232,26 +231,10 @@ fun AddEditCardScreen(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Dimensions.SpacingSm)
-                ) {
-                    colors.forEach { color: Color ->
-                        val isSelected = selectedCardColor == color
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(color = color)
-                                .then(
-                                    if (isSelected) {
-                                        Modifier.border(3.dp, com.alvaronolasco.creditcardtracker.ui.theme.ForestGreen, CircleShape)
-                                    } else Modifier
-                                )
-                                .clickable { selectedCardColor = color }
-                        )
-                    }
-                }
+                CardColorPicker(
+                    selectedColor = selectedCardColor,
+                    onColorSelected = { selectedCardColor = it }
+                )
 
                 // Notification settings — only visible when editing an existing card
                 if (cardId != null && uiState.notificationConfigs.isNotEmpty()) {
