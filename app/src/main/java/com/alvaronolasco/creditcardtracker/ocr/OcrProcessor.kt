@@ -72,9 +72,12 @@ class OcrProcessor(private val context: Context) : Closeable {
     /**
      * Preprocesa el bitmap antes de entregárselo a ML Kit:
      * 1. Escala hacia abajo imágenes muy grandes (ML Kit no necesita más de 2048 px).
-     * 2. Convierte a escala de grises usando los pesos de luminancia estándar.
-     * 3. Aumenta el contraste para que el texto negro resalte sobre el fondo blanco,
-     *    reduciendo la confusión entre caracteres similares (5/S, ,/.).
+     * 2. Detecta si la imagen es predominantemente oscura (dark mode).
+     * 3. Convierte a escala de grises con contraste adaptativo:
+     *    - Fondo claro (light mode): brightness negativo para separar texto negro del fondo.
+     *    - Fondo oscuro (dark mode): invierte los pesos de luminancia y brightness positivo
+     *      para convertir texto blanco en negro y fondo negro en blanco, optimizando
+     *      la entrada al reconocedor de caracteres.
      *
      * No usa OpenCV; todo es API nativa de Android (ColorMatrix + Canvas).
      */
@@ -93,22 +96,24 @@ class OcrProcessor(private val context: Context) : Closeable {
             src
         }
 
-        // 2 + 3. Escala de grises + contraste en un único paso mediante ColorMatrix.
+        // 2. Detectar modo oscuro: brillo medio < 128 indica fondo oscuro con texto claro.
+        val isDarkMode = calculateAverageBrightness(scaled) < 128f
+
+        // 3. Escala de grises + contraste adaptativo en un único paso mediante ColorMatrix.
         //
-        // La matriz combina los pesos de luminancia (fila RGB idéntica → grises)
-        // multiplicados por el factor de contraste, más un offset negativo de brillo
-        // que oscurece los tonos medios y separa aún más el texto del fondo.
-        //
-        //   contrast: amplifica la diferencia tinta/papel.
-        //   brightness: desplaza hacia negro para que los grises "sucios" no
-        //               confundan al reconocedor de caracteres.
+        // En dark mode se invierte el signo de los pesos de luminancia para que el
+        // fondo negro quede blanco y el texto blanco quede negro antes de entrar al OCR.
+        // brightness positivo en dark mode empuja los grises claros (texto) hacia blanco
+        // puro; negativo en light mode oscurece los grises sucios del fondo.
         val contrast = 1.8f
-        val brightness = -60f
+        val brightness = if (isDarkMode) 80f else -60f
+        val sign = if (isDarkMode) -1f else 1f
+
         val matrix = ColorMatrix(floatArrayOf(
-            0.299f * contrast, 0.587f * contrast, 0.114f * contrast, 0f, brightness,
-            0.299f * contrast, 0.587f * contrast, 0.114f * contrast, 0f, brightness,
-            0.299f * contrast, 0.587f * contrast, 0.114f * contrast, 0f, brightness,
-            0f,                0f,                0f,                1f, 0f
+            sign * 0.299f * contrast, sign * 0.587f * contrast, sign * 0.114f * contrast, 0f, brightness,
+            sign * 0.299f * contrast, sign * 0.587f * contrast, sign * 0.114f * contrast, 0f, brightness,
+            sign * 0.299f * contrast, sign * 0.587f * contrast, sign * 0.114f * contrast, 0f, brightness,
+            0f,                       0f,                       0f,                       1f, 0f
         ))
 
         val result = Bitmap.createBitmap(scaled.width, scaled.height, Bitmap.Config.ARGB_8888)
@@ -120,6 +125,28 @@ class OcrProcessor(private val context: Context) : Closeable {
 
         if (scaled !== src) scaled.recycle()
         return result
+    }
+
+    /**
+     * Estima el brillo medio de [bitmap] mediante muestreo (≈ 2 500 píxeles).
+     * Usa paso dinámico para mantener el coste en O(√píxeles) sin importar resolución.
+     * Retorna un valor de luminancia en [0, 255]: < 128 → imagen predominantemente oscura.
+     */
+    private fun calculateAverageBrightness(bitmap: Bitmap): Float {
+        val step = maxOf(1, maxOf(bitmap.width, bitmap.height) / 50)
+        var total = 0.0
+        var count = 0
+        for (x in 0 until bitmap.width step step) {
+            for (y in 0 until bitmap.height step step) {
+                val pixel = bitmap.getPixel(x, y)
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
+                total += 0.299 * r + 0.587 * g + 0.114 * b
+                count++
+            }
+        }
+        return if (count > 0) (total / count).toFloat() else 128f
     }
 }
 
@@ -708,27 +735,35 @@ class AmountDetector {
         amountRegex.findAll(correctOcrErrors(text))
 
     /**
-     * Corrige errores comunes de OCR en strings numéricos.
-     * ML Kit confunde: O/0, l/1, S/5, B/8, I/1, Z/2
+     * Corrige errores comunes de OCR SOLO dentro de tokens que parecen números.
+     * ML Kit confunde: O/0, l/I/1, S/5, B/8, Z/2.
+     *
+     * ⚠️ Las correcciones se aplican ÚNICAMENTE a tokens que contienen al menos
+     * un dígito real. Reemplazar globalmente corrompe keywords del texto:
+     *   "USD"      → "U5D"      (S→5 rompe la detección del símbolo de moneda)
+     *   "TOTAL"    → "T0TA1"    (O→0, L→1 bloquea la capa de keywords)
+     *   "compra por" → "c0mpra p0r" (O→0 impide el match del keyword)
+     *
+     * El regex captura secuencias compuestas solo por dígitos y los caracteres
+     * que ML Kit confunde, con separadores decimales opcionales. Al requerir
+     * al menos un dígito real en el token se evita sustituir letras aisladas
+     * que forman parte de palabras (ej: la "S" de "USD", la "O" de "cobro").
      */
     private fun correctOcrErrors(text: String): String {
-        var corrected = text
-
-        // Patrones de contexto para aplicar correcciones solo en contextos numéricos
-        // Si hay dígitos cerca, aplicar correcciones agresivas
-        val hasNearbyDigits = text.any { it.isDigit() }
-
-        if (hasNearbyDigits) {
-            // Reemplazar letras que OCR confunde con dígitos
-            corrected = corrected
-                .replace(Regex("""[Oo]"""), "0")   // O → 0
-                .replace(Regex("""[lLI]"""), "1")  // l, L, I → 1
-                .replace(Regex("""[S]"""), "5")     // S → 5
-                .replace(Regex("""[B]"""), "8")     // B → 8
-                .replace(Regex("""[Z]"""), "2")     // Z → 2
+        return Regex("""[0-9OoIlLSBZ]+(?:[.,][0-9OoIlLSBZ]+)*""").replace(text) { match ->
+            // Guardia: solo aplicar si el token contiene al menos un dígito real.
+            // Letras sueltas sin dígitos (ej: "S" en "USD") no se tocan.
+            if (match.value.any { it.isDigit() }) {
+                match.value
+                    .replace(Regex("""[Oo]"""), "0")   // O → 0
+                    .replace(Regex("""[lLI]"""), "1")  // l, L, I → 1
+                    .replace(Regex("""[S]"""), "5")     // S → 5
+                    .replace(Regex("""[B]"""), "8")     // B → 8
+                    .replace(Regex("""[Z]"""), "2")     // Z → 2
+            } else {
+                match.value  // Token sin dígitos reales: dejar intacto
+            }
         }
-
-        return corrected
     }
 
     // ─────────────────────────────────────────────────────────────────────────
