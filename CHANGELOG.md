@@ -44,6 +44,8 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 🐛 Ruido de OCR: Porcentajes (ej. "16%") y códigos postales ya no se capturan como montos válidos
 - 🐛 Robustez: Eliminados edge cases en parsing de montos con separadores inconsistentes
 - 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)
+- 🐛 **ImageCropCanvas:** La imagen ya no se desplaza al tocar en modo "Seleccionar". Causa: `detectTransformGestures` recibía el mismo evento `DOWN` que el draw handler y lo interpretaba como pan. Fix: ambos `pointerInput` keyed en `isDrawMode` (se reinician al cambiar modo) + draw handler usa `PointerEventPass.Initial` para consumir el evento antes que el detector de transformaciones.
+  **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt`
 
 **ADRs:** 
 - [ADR-041](docs/adr/ui/ADR-041-ocr-loading-state-ux.md) — OCR Loading State UX Improvement

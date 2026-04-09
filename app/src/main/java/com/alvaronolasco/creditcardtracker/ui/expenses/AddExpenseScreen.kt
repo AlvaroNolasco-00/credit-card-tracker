@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -994,10 +995,12 @@ private fun ImageCropCanvas(
                 .weight(1f)
                 .clipToBounds()            // keep zoomed image inside this area
                 .onSizeChanged { composableSize = it }
-                // Zoom/pan — always active; guarded by isDrawMode check inside.
-                .pointerInput(Unit) {
-                    detectTransformGestures { centroid, pan, zoom, _ ->
-                        if (!isDrawMode) {
+                // Zoom/pan — only active when NOT in draw mode.
+                // Keyed on isDrawMode so the gesture detector resets when mode changes,
+                // preventing stale gesture state from carrying over.
+                .pointerInput(isDrawMode) {
+                    if (!isDrawMode) {
+                        detectTransformGestures { centroid, pan, zoom, _ ->
                             val prevScale = scale
                             scale = (scale * zoom).coerceIn(1f, 5f)
                             // Zoom around the pinch centroid, then apply pan.
@@ -1006,23 +1009,26 @@ private fun ImageCropCanvas(
                         }
                     }
                 }
-                // Draw mode — always active; captures the press immediately (no slop delay).
-                .pointerInput(Unit) {
+                // Draw mode — intercepts DOWN at Initial pass so the event is consumed
+                // BEFORE detectTransformGestures (which runs at Main pass) can treat it
+                // as a pan and shift the image.
+                .pointerInput(isDrawMode) {
+                    if (!isDrawMode) return@pointerInput
                     awaitEachGesture {
-                        // Wait for first finger down
-                        var event = awaitPointerEvent()
+                        // Grab the finger-down at the Initial pass — highest priority,
+                        // before any other detector sees the event.
+                        var event = awaitPointerEvent(PointerEventPass.Initial)
                         var firstPointer = event.changes.firstOrNull { it.pressed && !it.previousPressed }
                         while (firstPointer == null) {
-                            event = awaitPointerEvent()
+                            event = awaitPointerEvent(PointerEventPass.Initial)
                             firstPointer = event.changes.firstOrNull { it.pressed && !it.previousPressed }
                         }
-                        if (!isDrawMode) return@awaitEachGesture
                         selStart = firstPointer.position
                         selEnd = firstPointer.position
                         firstPointer.consume()
                         val trackId = firstPointer.id
                         while (true) {
-                            val dragEvent = awaitPointerEvent()
+                            val dragEvent = awaitPointerEvent(PointerEventPass.Initial)
                             val drag = dragEvent.changes.firstOrNull { it.id == trackId } ?: break
                             selEnd = drag.position
                             drag.consume()
