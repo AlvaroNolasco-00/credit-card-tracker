@@ -130,8 +130,6 @@ fun AddExpenseScreen(
         if (selectedCardId > 0) viewModel.loadCard(selectedCardId)
     }
 
-    val context = LocalContext.current
-
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -180,8 +178,9 @@ fun AddExpenseScreen(
                             )
                             .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
                     ) {
+                        @Suppress("DEPRECATION")
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp)
@@ -798,7 +797,7 @@ private fun OcrLowConfidenceDialog(
                             text = "$${String.format("%.2f", pendingAmount)}",
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "El valor detectado tiene baja confianza. ¿Es el total correcto?",
@@ -827,7 +826,7 @@ private fun OcrLowConfidenceDialog(
                     TextButton(
                         onClick = onShowCrop,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
+                            contentColor = MaterialTheme.colorScheme.secondary
                         )
                     ) { Text("Seleccionar área") }
                     TextButton(

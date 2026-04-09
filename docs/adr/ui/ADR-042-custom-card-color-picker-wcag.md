@@ -159,6 +159,7 @@ Implementar un sistema completo de selección de color con:
 | Fecha | Cambio |
 |-------|--------|
 | 2026-04-08 | Documento inicial |
+| 2026-04-09 | Mejoras de layout: Círculos de color aumentados de 44dp a 56dp, espaciado de 12dp entre elementos, colores organizados en 2 filas (4 + 4) para mejor usabilidad y separación visual |
 
 ---
 

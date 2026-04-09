@@ -3,6 +3,7 @@ package com.alvaronolasco.creditcardtracker.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -48,27 +50,47 @@ fun CardColorPicker(
     var showColorPicker by remember { mutableStateOf(false) }
     var tempColor by remember { mutableStateOf(selectedColor) }
 
-    Row(
+    Column(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Predefined color palette
-        predefinedColors.forEach { color ->
-            val isSelected = selectedColor == color
-            ColorCircle(
-                color = color,
-                isSelected = isSelected,
-                onClick = { onColorSelected(color) }
-            )
+        // First row: 4 predefined colors
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            predefinedColors.take(4).forEach { color ->
+                val isSelected = selectedColor == color
+                ColorCircle(
+                    color = color,
+                    isSelected = isSelected,
+                    onClick = { onColorSelected(color) }
+                )
+            }
         }
 
-        // Custom color picker button
-        val isCustomSelected = !predefinedColors.contains(selectedColor)
-        CustomColorButton(
-            isSelected = isCustomSelected,
-            currentColor = selectedColor,
-            onClick = { showColorPicker = true }
-        )
+        // Second row: remaining 3 predefined colors + custom color button
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            predefinedColors.drop(4).forEach { color ->
+                val isSelected = selectedColor == color
+                ColorCircle(
+                    color = color,
+                    isSelected = isSelected,
+                    onClick = { onColorSelected(color) }
+                )
+            }
+
+            // Custom color picker button
+            val isCustomSelected = !predefinedColors.contains(selectedColor)
+            CustomColorButton(
+                isSelected = isCustomSelected,
+                currentColor = selectedColor,
+                onClick = { showColorPicker = true }
+            )
+        }
     }
 
     // Native Color Picker Dialog
@@ -87,13 +109,21 @@ fun CardColorPicker(
                     onClick = {
                         onColorSelected(tempColor)
                         showColorPicker = false
-                    }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.secondary
+                    )
                 ) {
                     Text("Aceptar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showColorPicker = false }) {
+                TextButton(
+                    onClick = { showColorPicker = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -109,7 +139,7 @@ private fun ColorCircle(
 ) {
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(56.dp)
             .clip(CircleShape)
             .background(color = color)
             .then(
@@ -129,7 +159,7 @@ private fun CustomColorButton(
 ) {
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(56.dp)
             .clip(CircleShape)
             .background(color = currentColor)
             .then(
@@ -144,7 +174,7 @@ private fun CustomColorButton(
             imageVector = Icons.Default.Add,
             contentDescription = "Color personalizado",
             tint = if (isSelected) ForestGreen else Color.White,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }
