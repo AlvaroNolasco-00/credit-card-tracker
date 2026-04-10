@@ -19,9 +19,10 @@ import kotlinx.coroutines.launch
         NotificationConfig::class,
         IncomeProfile::class,
         IncomeEntry::class,
-        BudgetItem::class
+        BudgetItem::class,
+        ActivityLog::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationConfigDao(): NotificationConfigDao
     abstract fun incomeDao(): IncomeDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun activityLogDao(): ActivityLogDao
 
     companion object {
         val MIGRATION_6_7 = object : Migration(6, 7) {
@@ -49,6 +51,30 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 database.execSQL(
                     "ALTER TABLE credit_cards ADD COLUMN partialPaymentCycleEnd INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS activity_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        category TEXT NOT NULL,
+                        action TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        entityId INTEGER,
+                        entityType TEXT
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_activity_logs_category ON activity_logs(category)"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_activity_logs_timestamp ON activity_logs(timestamp)"
                 )
             }
         }
@@ -106,7 +132,7 @@ abstract class AppDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

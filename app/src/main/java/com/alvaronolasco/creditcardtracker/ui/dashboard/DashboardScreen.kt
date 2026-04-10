@@ -54,6 +54,7 @@ fun DashboardScreen(
     onSearchClick: () -> Unit,
     onExpenseClick: (Int) -> Unit,
     onSupportClick: () -> Unit,
+    onActivityClick: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -166,6 +167,21 @@ fun DashboardScreen(
                                 color = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.weight(1f)
                             )
+                            IconButton(
+                                onClick = onActivityClick,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(SoftLime.copy(alpha = 0.85f))
+                            ) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = "Actividad",
+                                    tint = ForestGreen,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
                             IconButton(
                                 onClick = onSupportClick,
                                 modifier = Modifier

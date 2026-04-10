@@ -40,3 +40,45 @@ La tarjeta no aparece siempre para no ser intrusiva:
 - Nueva ruta de navegación: `"support_developer"`
 - Las URLs de donación son constantes en `SupportScreen.kt` — deben actualizarse con la URL real antes de publicar en producción
 - Sin cambios a Room, sin nuevas entidades, sin migraciones de base de datos
+
+---
+
+## Actualización: ADR-030-A — Wompi como método de pago alternativo (2026-04-10)
+
+### Contexto
+
+El método de pago PayPal tenía una barrera: requería que el donante tuviera una cuenta de PayPal. Usuarios sin cuenta no podían donar. Además, en El Salvador hay alternativas locales más accesibles.
+
+### Decisión
+
+Se agregó Wompi (pasarela de pago local de Banco Agrícola) como método de pago alternativo:
+
+- **Selector visual**: Chips interactivos para alternar entre "💳 Tarjeta (Wompi)" y "🅿️ PayPal (Cuenta)"
+- **Wompi como default**: Seleccionado por defecto para eliminar la barrera de "necesitas cuenta"
+- **Enlaces reutilizables**: 3 enlaces Wompi para $3/$5/$10 USD (sin backend, solo redirección a browser)
+- **Montos ajustados**: Wompi usa montos ligeramente diferentes ($3 vs $2) por configuración local
+- **Wompi acepta**: Tarjetas Visa/Mastercard + Bitcoin (donante paga, desarrollador recibe USD en cuenta bancaria)
+
+### Racional
+
+- **Wompi no requiere cuenta del donante**: Solo tarjeta de crédito/débito
+- **Local**: Operado por Banco Agrícola en El Salvador, más accesible para usuarios locales
+- **Comisión**: 3.5% por transacción (similar a PayPal)
+- **Sin backend**: Usa enlaces de pago reutilizables, igual que PayPal — cero código de servidor adicional
+- **Flexibilidad**: Usuario elige su método preferido
+
+### Implementación
+
+- Nuevo enum `PaymentMethod` (Wompi, PayPal)
+- URLs de Wompi como constantes: `WOMPI_URL_COFFEE`, `WOMPI_URL_LUNCH`, `WOMPI_URL_INTERNET`
+- Nuevo composable `PaymentMethodChip` para el selector
+- `DonationTiersSection` recibe `selectedPaymentMethod` y `onPaymentMethodChange`
+- Estado local `selectedPaymentMethod` en `SupportScreen` (default: Wompi)
+- UI dinámica: montos y textos actualizados según método seleccionado
+
+### Consecuencias
+
+- `SupportScreen.kt` crece de ~250 a ~480 líneas
+- Mayor conversión potencial al eliminar barrera de cuenta PayPal
+- Mantén compatibilidad con PayPal para usuarios que lo prefieran
+- Sin cambios a arquitectura, Room, o capas de datos

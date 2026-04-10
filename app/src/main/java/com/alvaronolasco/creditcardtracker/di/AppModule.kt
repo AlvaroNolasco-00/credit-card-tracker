@@ -51,6 +51,9 @@ object AppModule {
     fun provideBudgetDao(database: AppDatabase): BudgetDao = database.budgetDao()
 
     @Provides
+    fun provideActivityLogDao(database: AppDatabase): ActivityLogDao = database.activityLogDao()
+
+    @Provides
     @Singleton
     fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences =
         context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
@@ -64,6 +67,7 @@ object AppModule {
         expenseCategoryDao: ExpenseCategoryDao,
         configDao: NotificationConfigDao,
         incomeDao: IncomeDao,
-        budgetDao: BudgetDao
-    ): CreditCardRepository = CreditCardRepository(cardDao, categoryDao, expenseDao, expenseCategoryDao, configDao, incomeDao, budgetDao)
+        budgetDao: BudgetDao,
+        activityLogDao: ActivityLogDao
+    ): CreditCardRepository = CreditCardRepository(cardDao, categoryDao, expenseDao, expenseCategoryDao, configDao, incomeDao, budgetDao, activityLogDao)
 }

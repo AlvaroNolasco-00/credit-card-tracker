@@ -48,6 +48,7 @@ fun SupportScreen(
     onOnboardingClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.Wompi) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -87,6 +88,8 @@ fun SupportScreen(
             item {
                 DonationTiersSection(
                     modifier = Modifier.padding(horizontal = 16.dp),
+                    selectedPaymentMethod = selectedPaymentMethod,
+                    onPaymentMethodChange = { selectedPaymentMethod = it },
                     onTierClick = { url ->
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
@@ -245,72 +248,120 @@ private fun DeveloperMessageCard(modifier: Modifier = Modifier) {
 @Composable
 private fun DonationTiersSection(
     modifier: Modifier = Modifier,
+    selectedPaymentMethod: PaymentMethod,
+    onPaymentMethodChange: (PaymentMethod) -> Unit,
     onTierClick: (String) -> Unit
 ) {
     Column(modifier = modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Elige una contribución",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
+        Text(
+            text = "Elige una contribución",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(Modifier.height(12.dp))
+        
+        // Payment method selector
+        Row(modifier = Modifier.fillMaxWidth()) {
+            PaymentMethodChip(
+                label = "💳 Tarjeta",
+                sublabel = "Wompi",
+                isSelected = selectedPaymentMethod == PaymentMethod.Wompi,
+                onClick = { onPaymentMethodChange(PaymentMethod.Wompi) },
                 modifier = Modifier.weight(1f)
             )
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color(0xFF003087).copy(alpha = 0.1f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Payment,
-                        contentDescription = null,
-                        tint = Color(0xFF003087),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "PayPal",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF003087)
-                    )
-                }
-            }
+            Spacer(Modifier.width(8.dp))
+            PaymentMethodChip(
+                label = "🅿️ PayPal",
+                sublabel = "Cuenta",
+                isSelected = selectedPaymentMethod == PaymentMethod.PayPal,
+                onClick = { onPaymentMethodChange(PaymentMethod.PayPal) },
+                modifier = Modifier.weight(1f)
+            )
         }
-        Spacer(Modifier.height(12.dp))
+        
+        Spacer(Modifier.height(16.dp))
+        
+        val isWompi = selectedPaymentMethod == PaymentMethod.Wompi
+        val coffeeUrl = if (isWompi) WOMPI_URL_COFFEE else DONATION_URL_COFFEE
+        val lunchUrl = if (isWompi) WOMPI_URL_LUNCH else DONATION_URL_LUNCH
+        val internetUrl = if (isWompi) WOMPI_URL_INTERNET else DONATION_URL_INTERNET
+        
+        val viaText = if (isWompi) "vía Wompi" else "vía PayPal"
+        val coffeeAmount = if (isWompi) "$3 USD" else "$2 USD"
+        val lunchAmount = if (isWompi) "$5 USD" else "$5 USD"
+        val internetAmount = if (isWompi) "$10 USD" else "$10 USD"
+        
         DonationTierCard(
             icon = Icons.Default.Coffee,
             label = "Un café",
-            amount = "$2 USD · vía PayPal",
+            amount = "$coffeeAmount · $viaText",
             iconBgColor = SoftLime.copy(alpha = 0.4f),
             iconTint = ForestGreen,
-            onClick = { onTierClick(DONATION_URL_COFFEE) }
+            onClick = { onTierClick(coffeeUrl) }
         )
         Spacer(Modifier.height(10.dp))
         DonationTierCard(
             icon = Icons.Default.Restaurant,
             label = "Un almuerzo",
-            amount = "$5 USD · vía PayPal",
+            amount = "$lunchAmount · $viaText",
             iconBgColor = MintGreen.copy(alpha = 0.5f),
             iconTint = ForestGreen,
-            onClick = { onTierClick(DONATION_URL_LUNCH) }
+            onClick = { onTierClick(lunchUrl) }
         )
         Spacer(Modifier.height(10.dp))
         DonationTierCard(
             icon = Icons.Default.Wifi,
             label = "Un día de internet",
-            amount = "$10 USD · vía PayPal",
+            amount = "$internetAmount · $viaText",
             containerColor = ForestGreen,
             iconBgColor = Color.White.copy(alpha = 0.2f),
             iconTint = Color.White,
             labelColor = Color.White,
             amountColor = Color.White.copy(alpha = 0.8f),
             trailingTint = Color.White.copy(alpha = 0.8f),
-            onClick = { onTierClick(DONATION_URL_INTERNET) }
+            onClick = { onTierClick(internetUrl) }
         )
+    }
+}
+
+@Composable
+private fun PaymentMethodChip(
+    label: String,
+    sublabel: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = if (isSelected) ForestGreen else MaterialTheme.colorScheme.surface
+    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+    val borderColor = if (isSelected) ForestGreen else MaterialTheme.colorScheme.outlineVariant
+    
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = backgroundColor,
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
+            )
+            Text(
+                text = sublabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isSelected) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -422,5 +473,14 @@ private fun OtherSupportSection(
 private const val DONATION_URL_COFFEE = "https://paypal.me/alvarocojonudo/2"
 private const val DONATION_URL_LUNCH = "https://paypal.me/alvarocojonudo/5"
 private const val DONATION_URL_INTERNET = "https://paypal.me/alvarocojonudo/10"
+
+private const val WOMPI_URL_COFFEE = "https://s.wompi.sv/1238844zcw"
+private const val WOMPI_URL_LUNCH = "https://s.wompi.sv/1238847Hjp"
+private const val WOMPI_URL_INTERNET = "https://s.wompi.sv/1238848d5C"
+
 private const val PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.alvaronolasco.creditcardtracker"
 private const val SHARE_TEXT = "Lleva el control de tus tarjetas de crédito con esta app: $PLAY_STORE_URL"
+
+enum class PaymentMethod {
+    Wompi, PayPal
+}
