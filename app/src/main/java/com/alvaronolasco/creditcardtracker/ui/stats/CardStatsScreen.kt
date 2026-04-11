@@ -88,6 +88,8 @@ fun CardStatsScreen(
 
                 // Period Summary Details
                 val selectedPeriod = uiState.periods.getOrNull(uiState.selectedPeriodIndex)
+                var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
+                
                 if (selectedPeriod != null) {
                     PeriodDetailSection(selectedPeriod)
                     
@@ -108,7 +110,84 @@ fun CardStatsScreen(
                     
                     Spacer(Modifier.height(12.dp))
                     
-                    UsageCalendar(selectedPeriod)
+                    UsageCalendar(
+                        period = selectedPeriod,
+                        selectedDay = selectedDay,
+                        onDaySelected = { selectedDay = it }
+                    )
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    // Expense breakdown for selected day
+                    selectedDay?.let { day ->
+                        val dayExpenses = selectedPeriod.expenseDetails.filter { expense ->
+                            val expenseDate = Instant.ofEpochMilli(expense.expense.date)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                            expenseDate == day
+                        }
+                        
+                        if (dayExpenses.isNotEmpty()) {
+                            Text(
+                                "Gastos del ${day.dayOfMonth} de ${day.month.getDisplayName(TextStyle.FULL, Locale("es"))}",
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Spacer(Modifier.height(12.dp))
+                            
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    dayExpenses.forEach { expense ->
+                                        val expenseTime = Instant.ofEpochMilli(expense.expense.date)
+                                            .atZone(ZoneId.systemDefault())
+                                            .toLocalTime()
+                                        
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(
+                                                    expense.expense.description,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    String.format("%02d:%02d", expenseTime.hour, expenseTime.minute),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Text(
+                                                "$${String.format("%,.2f", expense.expense.amount)}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = ForestGreen
+                                            )
+                                        }
+                                        
+                                        if (expense != dayExpenses.last()) {
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 Spacer(Modifier.height(32.dp))
@@ -325,7 +404,11 @@ fun InfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Strin
 }
 
 @Composable
-fun UsageCalendar(period: PeriodStats) {
+fun UsageCalendar(
+    period: PeriodStats,
+    selectedDay: LocalDate?,
+    onDaySelected: (LocalDate) -> Unit
+) {
     val startInstant = Instant.ofEpochMilli(period.startDate)
     val endInstant = Instant.ofEpochMilli(period.endDate)
     val startDate = startInstant.atZone(ZoneId.systemDefault()).toLocalDate()
@@ -386,17 +469,32 @@ fun UsageCalendar(period: PeriodStats) {
                                 (amount / (period.totalExpenses / period.expensesCount).coerceAtLeast(1.0)).toFloat().coerceIn(0.2f, 1f)
                             } else 0f
 
+                            val isSelected = selectedDay == day
+
                             Surface(
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures {
+                                            onDaySelected(day)
+                                        }
+                                    },
                                 shape = CircleShape,
-                                color = if (hasExpense) MintGreen.copy(alpha = intensity) else Color.Transparent,
-                                contentColor = if (hasExpense) ForestGreen else MaterialTheme.colorScheme.onSurface
+                                color = when {
+                                    isSelected -> ForestGreen
+                                    hasExpense -> MintGreen.copy(alpha = intensity)
+                                    else -> Color.Transparent
+                                },
+                                border = if (isSelected && !hasExpense) {
+                                    BorderStroke(2.dp, ForestGreen)
+                                } else null,
+                                contentColor = if (isSelected) Color.White else if (hasExpense) ForestGreen else MaterialTheme.colorScheme.onSurface
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         "${day.dayOfMonth}",
                                         fontSize = 12.sp,
-                                        fontWeight = if (hasExpense) FontWeight.Bold else FontWeight.Normal
+                                        fontWeight = if (hasExpense || isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
                             }

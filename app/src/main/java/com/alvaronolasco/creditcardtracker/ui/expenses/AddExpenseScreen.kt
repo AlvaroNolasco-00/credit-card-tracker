@@ -15,6 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -43,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -882,10 +885,24 @@ private fun ImageCropCanvas(
     // the instruction text changing height won't visually shift the image.
     var imageCenter by remember { mutableStateOf(Offset.Zero) }
 
-    // Center image once the canvas size is first known.
+    // Track previous composable size so we can adjust imageCenter proportionally.
+    var prevComposableSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Center image once the canvas size is first known, and adjust
+    // imageCenter proportionally if the canvas resizes later.
     LaunchedEffect(composableSize) {
-        if (composableSize.width > 0 && composableSize.height > 0 && imageCenter == Offset.Zero) {
-            imageCenter = Offset(composableSize.width / 2f, composableSize.height / 2f)
+        if (composableSize.width > 0 && composableSize.height > 0) {
+            if (imageCenter == Offset.Zero) {
+                // First time: center the image.
+                imageCenter = Offset(composableSize.width / 2f, composableSize.height / 2f)
+            } else if (prevComposableSize.width > 0 && prevComposableSize.height > 0) {
+                // Canvas resized (e.g. layout shift): keep the image at the same
+                // relative position so it doesn't appear to jump.
+                val dx = (composableSize.width - prevComposableSize.width) / 2f
+                val dy = (composableSize.height - prevComposableSize.height) / 2f
+                imageCenter = Offset(imageCenter.x + dx, imageCenter.y + dy)
+            }
+            prevComposableSize = composableSize
         }
     }
 
@@ -958,8 +975,10 @@ private fun ImageCropCanvas(
             )
         }
 
+        // Fixed height prevents the "Limpiar" button from resizing this row,
+        // which would cascade into a canvas resize and shift the image.
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -979,13 +998,14 @@ private fun ImageCropCanvas(
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
             )
-            if (hasSelection) {
-                TextButton(
-                    onClick = { selStart = null; selEnd = null },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                ) {
-                    Text("Limpiar", style = MaterialTheme.typography.bodySmall)
-                }
+            // Always present so its appearance doesn't change row height / canvas size.
+            TextButton(
+                onClick = { selStart = null; selEnd = null },
+                enabled = hasSelection,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                modifier = Modifier.alpha(if (hasSelection) 1f else 0f)
+            ) {
+                Text("Limpiar", style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -993,15 +1013,32 @@ private fun ImageCropCanvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .clipToBounds()            // keep zoomed image inside this area
+                .clipToBounds()
                 .onSizeChanged { composableSize = it }
         ) {
-            // LAYER 1 — Image with zoom/pan gestures
+            // Single canvas: draws image + selection overlay.
+            // Single pointerInput keyed on isDrawMode: when the mode changes the coroutine
+            // is cancelled and restarted from scratch, so neither detector ever sees
+            // stale gesture state from the previous mode.
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(isDrawMode) {
-                        if (!isDrawMode) {
+                        if (isDrawMode) {
+                            // Draw mode: track one-finger drag to define a selection rect.
+                            // awaitEachGesture loops automatically for subsequent draws.
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                selStart = down.position
+                                selEnd = down.position
+                                down.consume()
+                                drag(down.id) { change ->
+                                    selEnd = change.position
+                                    change.consume()
+                                }
+                            }
+                        } else {
+                            // Zoom/pan mode: standard multi-touch transform.
                             detectTransformGestures { centroid, pan, zoom, _ ->
                                 val prevScale = scale
                                 scale = (scale * zoom).coerceIn(1f, 5f)
@@ -1014,31 +1051,14 @@ private fun ImageCropCanvas(
                 val bmp = bitmap ?: return@Canvas
                 val rect = imageRect ?: return@Canvas
 
+                // Layer 1: image
                 drawImage(
                     image = bmp.asImageBitmap(),
                     dstOffset = IntOffset(rect.left.toInt(), rect.top.toInt()),
                     dstSize = IntSize(rect.width.toInt(), rect.height.toInt())
                 )
-            }
 
-            // LAYER 2 — Selection overlay with draw gestures
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(isDrawMode) {
-                        if (!isDrawMode) return@pointerInput
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            selStart = down.position
-                            selEnd = down.position
-                            down.consume()
-                            drag(down.id) { change ->
-                                selEnd = change.position
-                                change.consume()
-                            }
-                        }
-                    }
-            ) {
+                // Layer 2: selection rectangle (drawn on top of the image, same coord space)
                 val s = selStart; val e = selEnd
                 if (s != null && e != null) {
                     val left = minOf(s.x, e.x)

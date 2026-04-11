@@ -1,4 +1,4 @@
-# ADR-045: Refactorización ImageCropCanvas — Arquitectura de Capas para Gestos
+# ADR-045: Refactorización ImageCropCanvas — Un solo pointerInput con if/else por modo
 
 **Fecha:** 2026-04-11  
 **Estado:** Aceptado  
@@ -10,72 +10,102 @@
 
 ## Contexto
 
-La función `ImageCropCanvas` (pantalla de recorte de imagen OCR) tenía un comportamiento errático al cambiar rápidamente entre los modos "Zoom/Mover" e "Seleccionar":
+La función `ImageCropCanvas` (pantalla de recorte de imagen OCR) tenía un comportamiento errático al cambiar entre los modos "Zoom/Mover" e "Seleccionar":
 
-1. **Dos detectores de gestos compitiendo** en el mismo `Box`:
-   - `pointerInput(isDrawMode)` para zoom/pan (cuando `!isDrawMode`)
-   - `pointerInput(isDrawMode)` para dibujo (cuando `isDrawMode`)
+1. **Dos detectores de gestos compitiendo** en el mismo `Box` padre:
+   - `pointerInput(isDrawMode)` para zoom/pan
+   - `pointerInput(isDrawMode)` para dibujo con hack de `PointerEventPass.Initial`
 
-2. **Hack de `PointerEventPass.Initial`**: El handler de dibujo usaba `awaitPointerEvent(PointerEventPass.Initial)` en un loop manual para interceptar eventos antes que el detector de transformación, lo cual es frágil y complejo.
+2. **Hack `PointerEventPass.Initial`**: El handler de dibujo interceptaba eventos en el Initial pass para ganar prioridad sobre `detectTransformGestures`. Frágil y difícil de mantener.
 
-3. **Problema observable**: Al cambiar de modo rápidamente, el estado del gesto anterior "se filtraba" — la imagen podía desplazarse sin intención o el rectángulo se dibujaba en posiciones incorrectas.
+3. **Problema observable**: Al cambiar de modo, el estado del gesto anterior "se filtraba" — la imagen se desplazaba al iniciar un dibujo, o el rectángulo aparecía en posiciones incorrectas.
 
 **Restricciones:**
 - La funcionalidad de crop (conversión canvas → bitmap) debe permanecer exacta
-- Las coordenadas de selección deben alinearse perfectamente con la imagen renderizada
-- El zoom/pan y el dibujo no deben interferir entre sí
+- Las coordenadas de selección deben alinearse con `imageRect`
+- Zoom/pan y dibujo no deben interferir entre sí
+- **Estabilidad Visual**: La imagen no debe "saltar" ni cambiar de tamaño mientras el usuario arrastra el rectángulo de selección.
+
+### Problema de Estabilidad (Bug de Layout Shift)
+
+Incluso con la arquitectura de un solo Canvas, se detectó un error donde la imagen "saltaba" o se desplazaba erráticamente mientras el usuario dibujaba el rectángulo. 
+
+**Causa del bug**:
+1. El botón "Limpiar" aparecía condicionalmente vía `if (hasSelection)`.
+2. Al arrastrar el rectángulo > 10px, `hasSelection` pasaba a true y el botón aparecía.
+3. El `TextButton` tiene una altura mayor (~48dp) que los chips de modo (~32dp).
+4. La fila de controles crecía, obligando al Canvas (con `.weight(1f)`) a **encogerse**.
+5. El cambio de tamaño del Canvas disparaba un recalculo de `baseFitSize`, moviendo la imagen visualmente durante el gesto de dibujo.
+
+### Intento fallido: Dos Canvas apilados
+
+Se intentó separar en dos composables `Canvas` dentro de un `Box`:
+- Canvas 1 (abajo): imagen + `pointerInput` para zoom/pan
+- Canvas 2 (arriba, overlay): rectángulo + `pointerInput` para dibujo
+
+**Por qué falló**: En Compose, dos composables hermanos apilados en un `Box` no se comportan igual que dos `.pointerInput()` en cadena sobre el mismo composable. Cuando el Canvas superior hace `return@pointerInput` sin consumir eventos, no hay garantía de que éstos lleguen al Canvas de abajo — el sistema de dispatch para hermanos superpuestos es diferente al de modificadores en serie. Resultado: zoom/pan dejó de funcionar completamente.
 
 ---
 
 ## Decisión
 
-Separar el único `Canvas` en **dos Canvas apilados** dentro del mismo `Box`:
+**Un único `Canvas` con un único `pointerInput(isDrawMode)`** que usa `if/else` para ramificar entre los dos modos.
 
-### Opción elegida: Arquitectura de capas
+### Opción elegida
 
+```kotlin
+Canvas(
+    modifier = Modifier
+        .fillMaxSize()
+        .pointerInput(isDrawMode) {
+            if (isDrawMode) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    selStart = down.position; selEnd = down.position
+                    down.consume()
+                    drag(down.id) { change -> selEnd = change.position; change.consume() }
+                }
+            } else {
+                detectTransformGestures { centroid, pan, zoom, _ -> /* zoom/pan */ }
+            }
+        }
+) {
+    // Dibuja imagen EN PRIMER LUGAR, luego el rectángulo encima
+    drawImage(...)
+    if (s != null && e != null) { drawRect(...) }
+}
 ```
-Box(fillMaxWidth, weight(1f), clipToBounds, onSizeChanged)
-  ├─ Canvas Layer 1: Imagen + Zoom/Pan gestures
-  └─ Canvas Layer 2: Overlay transparente + Draw gestures
-```
 
-**Cambios técnicos:**
+**El mecanismo clave**: `pointerInput(isDrawMode)` — cuando `isDrawMode` cambia, Compose cancela la coroutine y la reinicia desde cero. El nuevo estado ejecuta solo el branch correcto (`if` o `else`), sin ninguna coroutine residual del modo anterior.
 
-1. **Canvas 1 (Imagen)** — `fillMaxSize()` + `pointerInput(isDrawMode)`
-   - Solo dibuja la imagen en `imageRect`
-   - Cuando `!isDrawMode`, ejecuta `detectTransformGestures` (zoom/pan)
-   - Cuando `isDrawMode`, el handler retorna sin hacer nada
+### Refinamiento para Estabilidad (Layout Invariante)
 
-2. **Canvas 2 (Overlay)** — `fillMaxSize()` + `pointerInput(isDrawMode)`
-   - Solo dibuja el rectángulo de selección (`selStart`/`selEnd`)
-   - Cuando `isDrawMode`, ejecuta gestos de dibujo:
-     - `awaitFirstDown()` → captura press inicial
-     - `drag(pointerId) { }` → rastrea drag hasta lift
-   - Cuando `!isDrawMode`, retorna sin hacer nada
+Para eliminar los saltos visuales, se aplicaron tres reglas de diseño defensivo:
 
-3. **Ambos Canvas comparten:**
-   - El espacio del `Box` → mismas dimensiones, origen `(0,0)`
-   - Las variables de estado: `selStart`, `selEnd`, `scale`, `imageCenter`, `composableSize`
-   - Resultado: coordenadas de selección alineadas perfectamente con `imageRect`
+1. **Altura de Control Fija**: El `Row` de chips y botones tiene ahora un `.height(48.dp)` explícito. Esto garantiza que el Canvas subyacente nunca cambie de tamaño, independientemente de qué botones aparezcan.
+2. **Visibilidad vía Alpha**: En lugar de `if (hasSelection) { Button(...) }`, se usa `Modifier.alpha(if (hasSelection) 1f else 0f)`. El botón siempre ocupa espacio en el layout, evitando "sacudidas" cuando el usuario empieza a dibujar.
+3. **Centrado Proporcional**: Se añadió lógica en un `LaunchedEffect(composableSize)` para que, si el canvas llegara a cambiar de tamaño (por ejemplo, al rotar el dispositivo), el `imageCenter` se ajuste proporcionalmente, manteniendo la imagen en la misma posición relativa.
 
 ### Por qué esta opción
 
-- ✅ **Separación de responsabilidades**: Cada Canvas gestiona su propio evento sin contaminación
-- ✅ **Arquitectura clara**: Overlay encima es intuitiva — no necesita hacks de eventos
-- ✅ **Patrón idiomático**: `awaitFirstDown()` + `drag()` es la API estándar de Compose, eliminando `PointerEventPass.Initial`
-- ✅ **Facilidad de mantenimiento**: Dos Canvas independientes = debugging más sencillo
-- ✅ **Sin cambios en crop math**: La lógica de conversión canvas → bitmap permanece idéntica
+- ✅ **Coroutine única**: Solo una rama corre a la vez — imposible que los detectores interfieran
+- ✅ **Reset limpio**: El key `isDrawMode` garantiza que al cambiar de modo, el detector anterior se cancela completamente antes de que el nuevo inicie
+- ✅ **API idiomática**: `awaitFirstDown()` + `drag()` reemplaza el hack `PointerEventPass.Initial`
+- ✅ **Coordinadas garantizadas**: Un solo Canvas → el rectángulo y la imagen comparten el mismo espacio de coordenadas por definición
+- ✅ **Sin overhead**: Un composable en lugar de dos
 
 ### Opciones rechazadas
 
-**Opción A: Consumir eventos más agresivamente en un solo Canvas**
-- ❌ Requeriría más lógica condicional en el mismo handler
-- ❌ El `PointerEventPass.Initial` hack seguiría siendo necesario
-- ❌ No resuelve la raíz del problema (estado del gesto filtrándose)
+**Opción A: Dos Canvas apilados en Box**
+- ❌ Hermanos en Box no garantizan pass-through de eventos entre `pointerInput`
+- ❌ Probado: zoom/pan dejó de funcionar al ser bloqueado por el Canvas superior
 
-**Opción B: Usar `Modifier.pointerInteropFilter`**
-- ❌ API legada, menor control de precedencia de eventos
-- ❌ No es la solución recomendada en Compose moderno
+**Opción B: `PointerEventPass.Initial` hack (implementación original)**
+- ❌ Frágil: depende del order de dispatch interno de Compose
+- ❌ Estado de gesto se filtraba entre modos al cambiar rápido
+
+**Opción C: `pointerInteropFilter`**
+- ❌ API legada, menos control sobre eventos de Compose
 
 ---
 
@@ -83,36 +113,31 @@ Box(fillMaxWidth, weight(1f), clipToBounds, onSizeChanged)
 
 ### Directas
 
-✅ **Comportamiento estable** — Cambiar entre modos sin "glitches"  
-✅ **Código más limpio** — Se eliminó el loop `awaitPointerEvent(PointerEventPass.Initial)`  
-✅ **UX mejorada** — Gestos de zoom/pan y dibujo no interfieren  
-❌ **Renderizado de dos Canvas** — Mínimo overhead (negligible, solo es overlay), no impacta performance
+✅ **Zoom/pan funciona** — Un solo `pointerInput` activo en modo pan  
+✅ **Dibujo estable** — Un solo `pointerInput` activo en modo dibujo  
+✅ **Sin glitches al cambiar modo** — Coroutine se cancela y reinicia limpiamente  
+✅ **Crop correcto** — Un Canvas = un espacio de coordenadas, sin desfases
 
 ### Técnicas
 
 **Archivos impactados:**
-- `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt:866–1124`
-  - Refactorizado `ImageCropCanvas` con dos Canvas
+- `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt:994–1072`
+  - `ImageCropCanvas`: un Canvas, un `pointerInput(isDrawMode)` con `if/else`
 
 **Cambios estructurales:**
-- Eliminados los dos `pointerInput` del `Box` padre
-- Canvas 1 encapsula zoom/pan con su propio `pointerInput(isDrawMode)`
-- Canvas 2 encapsula dibujo con `awaitFirstDown()` + `drag()`
+- Eliminados los dos `pointerInput` del `Box` padre (implementación original)
+- Eliminado el intento de dos Canvas apilados
+- Canvas único dibuja imagen primero, rectángulo de selección encima
 
 **Sin breaking changes:**
-- Interfaz pública de `ImageCropCanvas(...)` sin cambios
-- Lógica de crop y variables de estado sin cambios
-- Los parámetros `onCropConfirm`, `onCancel` funcionan idénticamente
+- Firma de `ImageCropCanvas(...)` sin cambios
+- Lógica de crop sin cambios (coordenadas en el mismo espacio)
+- `onCropConfirm`, `onCancel` funcionan idénticamente
 
 ### Operacionales
 
 - **Testing requerido**: Manual en emulador/dispositivo
-  - Probar zoom/pan en modo "Zoom/Mover"
-  - Probar dibujo de rectángulo en modo "Seleccionar"
-  - Cambiar rápidamente entre modos varias veces
-  - Validar que "Validar área" recorta correctamente
-- **Documentación**: Este ADR documenta la decisión
-- **No hay comunicación necesaria** — Es una refactorización interna
+- **Documentación**: Este ADR
 
 ---
 
@@ -120,46 +145,33 @@ Box(fillMaxWidth, weight(1f), clipToBounds, onSizeChanged)
 
 ### Cambios realizados
 
-1. ✅ Dividido el único `Canvas` en dos Canvas con `fillMaxSize()` dentro del `Box`
-2. ✅ Movido `detectTransformGestures` al `pointerInput` de Canvas 1
-3. ✅ Reemplazado el loop `awaitPointerEvent(PointerEventPass.Initial)` por `awaitFirstDown()` + `drag()` en Canvas 2
-4. ✅ Canvas 1 dibuja solo la imagen
-5. ✅ Canvas 2 dibuja solo el rectángulo de selección
+1. ✅ Un solo `Canvas` con `fillMaxSize()`
+2. ✅ Un único `pointerInput(isDrawMode)` — key reinicia la coroutine al cambiar modo
+3. ✅ `if (isDrawMode)` → `awaitEachGesture` + `awaitFirstDown()` + `drag()`
+4. ✅ `else` → `detectTransformGestures` (zoom/pan sin competencia)
+5. ✅ Canvas dibuja imagen y luego el rectángulo de selección encima (misma draw call, mismo coordinate space)
 
 ### Archivo de referencia
 
-- Commit: Refactorización de `ImageCropCanvas` en `AddExpenseScreen.kt:992–1070`
-- Antes: Líneas 992–1078 (un Canvas + dos pointerInput en Box)
-- Después: Líneas 992–1070 (dos Canvas separados)
+- Líneas 994–1072 de `AddExpenseScreen.kt`
 
 ---
 
 ## Validación
 
-### Cómo verificar la implementación
-
 - [ ] Build `./gradlew assembleDebug` sin errores
-- [ ] Abrir pantalla OCR (Add Expense → Cámara)
 - [ ] Zoom/pan funciona suavemente en modo "Zoom/Mover"
-- [ ] Dibujar rectángulo funciona en modo "Seleccionar" sin desplazar imagen
-- [ ] Cambiar modo 5+ veces rápidamente → sin comportamiento extraño
-- [ ] Presionar "Validar área" recorta correctamente después del cambio de modo
-- [ ] La selección persiste al cambiar de modo y volver
-
-### Métricas de éxito
-
-✅ Cero "glitches" al cambiar entre modos  
-✅ Zoom/pan fluido (60 fps)  
-✅ Dibujo responsive sin lag  
-✅ Crop preciso en la imagen original  
+- [ ] Dibujar rectángulo en modo "Seleccionar" sin desplazar imagen
+- [ ] Cambiar rápidamente entre modos varias veces → sin comportamiento extraño
+- [ ] "Validar área" recorta correctamente el área seleccionada
 
 ---
 
 ## Notas y Aprendizajes
 
-- **Compose layering intuitive**: Cuando dos Canvas llenan el mismo espacio, el superior recibe eventos primero de forma natural — no necesitas `PointerEventPass.Initial`.
-- **Coordinate space alignment**: Ambos Canvas usando `fillMaxSize()` en el mismo `Box` garantiza que sus espacios de coordenadas son idénticos; no hay offset o desfase.
-- **State reuse across layers**: Las variables mutables (`selStart`, `selEnd`, etc.) compartidas entre Canvas permiten que el overlay acceda a los datos de la imagen sin duplicación.
+- **Hermanos vs modificadores**: En Compose, dos `.pointerInput()` en cadena sobre el mismo modificador se comunican diferente a dos composables hermanos apilados en Box. Los modificadores en cadena comparten el dispatch; los hermanos no.
+- **Key de pointerInput**: `pointerInput(key)` es la forma idiomática de resetear detectores de gestos — cuando el key cambia, la coroutine se cancela y reinicia. No necesitas `PointerEventPass.Initial` si usas el key correctamente con `if/else`.
+- **Un Canvas es suficiente**: El orden de `drawImage` → `drawRect` dentro del mismo Canvas garantiza que el rectángulo esté encima de la imagen, con coordenadas idénticas.
 
 ---
 
@@ -167,12 +179,13 @@ Box(fillMaxWidth, weight(1f), clipToBounds, onSizeChanged)
 
 | Fecha | Cambio |
 |-------|--------|
-| 2026-04-11 | Documento inicial — Refactorización implementada |
+| 2026-04-11 | Documento inicial |
+| 2026-04-11 | Corrección: intento de dos Canvas falló; solución final es un Canvas con if/else |
+| 2026-04-11 | Mejora de estabilidad: fila de altura fija y alpha-visibility para evitar layout shifts durante el dibujo |
 
 ---
 
 ## Referencias
 
 - [ADR-035](../architecture/ADR-035-ocr-processor-lifecycle-management.md) — OCR Processor Lifecycle Management
-- [Compose PointerInput Docs](https://developer.android.com/jetpack/compose/input/pointer) — awaitFirstDown() y drag() API
-- [Issue/PR]: Refactorización de ImageCropCanvas para estabilidad de gestos
+- [Compose PointerInput Docs](https://developer.android.com/jetpack/compose/input/pointer)

@@ -28,7 +28,7 @@ Run a single test class:
 **MVVM + Clean Architecture** with three layers:
 
 ### Data Layer (`data/`)
-- **Room DB** (version 8, migrations via `MIGRATION_6_7` / `MIGRATION_7_8`, `fallbackToDestructiveMigration` as safety net): 7 entities — `CreditCard`, `Expense`, `Category`, `ExpenseCategory` (junction), `NotificationConfig`, `IncomeProfile`, `IncomeEntry`
+- **Room DB** (version 10, migrations via `MIGRATION_6_7` → `MIGRATION_7_8` → `MIGRATION_8_9` → `MIGRATION_9_10`, `fallbackToDestructiveMigration` as safety net): 11 entities — `CreditCard`, `Expense`, `Category`, `ExpenseCategory` (junction), `NotificationConfig`, `IncomeProfile`, `IncomeEntry`, `ActivityLog`, `BudgetItem`, `CategorySpending`, `ExpenseWithCategories`
 - **DAOs** return `Flow<T>` for reactive queries — see `data/dao/`
 - **`CreditCardRepository`** is the single data access point, aggregating all DAOs
 - **`UserPreferencesRepository`** manages SharedPreferences (user name, etc.) via `StateFlow`
@@ -37,13 +37,14 @@ Run a single test class:
 ### Presentation Layer (`ui/`)
 - Jetpack Compose + Material 3
 - Each feature folder contains a `*Screen.kt` (composable) and a `*ViewModel.kt`
+- Feature modules: `dashboard/`, `cards/`, `expenses/`, `income/`, `budget/`, `activity/`, `stats/`, `onboarding/`, `support/`, `theme/`, `navigation/`, `components/`
 - Navigation is centralized in `ui/navigation/Navigation.kt` (single `NavHost`) — see that file for the full route list
-- Reusable design-system components live in `ui/components/` (`AppButton`, `AppCard`, `AppTextField`, `AppTopBar`, `AppChip`, `AppLoadingIndicator`, `EmptyStateView`)
+- Reusable design-system components live in `ui/components/` (`AppButton`, `AppCard`, `AppTextField`, `AppTopBar`, `AppChip`, `AppLoadingIndicator`, `EmptyStateView`, `CardColorPicker`)
 - Theme defined in `ui/theme/` (Color, Type, Shape, Dimensions)
 
 ### Cross-Cutting Modules
 - **DI** (`di/AppModule.kt`): Hilt `@Singleton` provides `AppDatabase`, `CreditCardRepository`, `UserPreferencesRepository`, `SharedPreferences`, and a `CoroutineScope` with `SupervisorJob`
-- **OCR** (`ocr/OcrProcessor.kt`): ML Kit Text Recognition. Uses a 4-tier detection strategy — keyword match → positional heuristic → last-section scan → max-amount fallback. Returns a confidence level (HIGH/MEDIUM/LOW/NONE).
+- **OCR** (`ocr/OcrProcessor.kt`): ML Kit Text Recognition. Unified scoring system with geometric alignment, column detection, dark-mode adaptive preprocessing, scoped character correction, pre-compiled regexes, and cached `NumberFormat`. Returns a confidence level (HIGH/MEDIUM/LOW/NONE). See ADR-033 through ADR-043.
 - **Notifications** (`notifications/`): `ReminderScheduler` creates exact alarms; `ReminderReceiver` fires them; `BootReceiver` reschedules after reboot; `NotificationHelper` manages channel creation and display.
 - **Widget** (`widget/`): Glance-based home screen widget. `WidgetDeepLink` is a singleton `StateFlow`-based handler for navigating into the app from widget taps.
 
@@ -61,7 +62,7 @@ All significant decisions **must** be documented in `docs/adr/` before or immedi
 **Quick reference:**
 - **When:** UI/widget features, entity changes, architecture patterns, SDK changes, multi-option decisions
 - **Template:** [docs/adr/TEMPLATE.md](docs/adr/TEMPLATE.md) — Structure: Contexto → Decisión → Consecuencias
-- **Registry:** [docs/adr/INDEX.md](docs/adr/INDEX.md) — All 32+ decisions, searchable by category
+- **Registry:** [docs/adr/INDEX.md](docs/adr/INDEX.md) — All 45+ decisions, searchable by category
 - **Example:** [docs/adr/EXAMPLE-DETAILED.md](docs/adr/EXAMPLE-DETAILED.md) — Reference (ADR-029, ⭐⭐⭐⭐⭐ quality)
 - **Maintenance:** [docs/adr/MAINTAINER.md](docs/adr/MAINTAINER.md) — Workflow, PR checklist, troubleshooting, release procedures
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md) — Synchronized bitácora (each entry cites ADR + files)

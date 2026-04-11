@@ -44,8 +44,8 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 🐛 Ruido de OCR: Porcentajes (ej. "16%") y códigos postales ya no se capturan como montos válidos
 - 🐛 Robustez: Eliminados edge cases en parsing de montos con separadores inconsistentes
 - 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)
-- 🐛 **ImageCropCanvas — Refactorización a Arquitectura de Capas (ADR-045):** Eliminación del comportamiento errático al cambiar entre modos. Arquitectura anterior tenía dos `pointerInput` compitiendo en el mismo `Box` + hack `PointerEventPass.Initial` frágil. Solución: separar en dos Canvas apilados con responsabilidades limpias (Layer 1: imagen + zoom/pan | Layer 2: overlay + dibujo con `awaitFirstDown()` + `drag()`). Resultado: gestos estables, sin interferencia entre modos, código mantenible.
-  **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt` (líneas 992–1070)
+- 🐛 **ImageCropCanvas — Refactorización de gestos (ADR-045):** Eliminación del comportamiento errático al cambiar entre modos. Arquitectura anterior tenía dos `pointerInput` compitiendo en el mismo `Box` + hack `PointerEventPass.Initial` frágil. Solución final: un único `Canvas` con un único `pointerInput(isDrawMode)` que usa `if/else` — cuando `isDrawMode` cambia, Compose cancela y reinicia la coroutine desde cero, garantizando que solo un detector de gestos corre a la vez sin estado residual. Dibujo usa `awaitFirstDown()` + `drag()`; zoom/pan usa `detectTransformGestures`. Imagen y rectángulo de selección se dibujan en el mismo Canvas (mismas coordenadas, sin desfase para el crop).
+  **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt` (líneas 994–1072)
 
 **ADRs:** 
 - [ADR-045](docs/adr/ui/ADR-045-image-crop-canvas-layered-architecture.md) — Refactorización ImageCropCanvas con arquitectura de capas
