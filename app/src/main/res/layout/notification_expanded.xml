@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Layout expandido para notificaciones de corte y pago.
+    Usado como setCustomBigContentView() con DecoratedCustomViewStyle.
+    Restricciones RemoteViews: solo LinearLayout, FrameLayout, RelativeLayout,
+    TextView, ImageView, ProgressBar. Sin CardView ni ConstraintLayout.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical"
+    android:minHeight="72dp">
+
+    <!-- Mini tarjeta generada como Bitmap -->
+    <ImageView
+        android:id="@+id/notif_card_image"
+        android:layout_width="96dp"
+        android:layout_height="60dp"
+        android:scaleType="fitXY"
+        android:background="@drawable/notification_card_background"
+        android:contentDescription="@null" />
+
+    <!-- Separador -->
+    <Space
+        android:layout_width="14dp"
+        android:layout_height="match_parent" />
+
+    <!-- Columna derecha: tipo + nombre + mensaje + fecha -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+
+        <!-- Badge: CORTE / PAGO en color de la tarjeta -->
+        <TextView
+            android:id="@+id/notif_type_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.12"
+            android:textAllCaps="true" />
+
+        <!-- Nombre de la tarjeta -->
+        <TextView
+            android:id="@+id/notif_card_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Mensaje: "En 3 días" / "Hoy" -->
+        <TextView
+            android:id="@+id/notif_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Fecha del evento: "Viernes, 18 de abril" -->
+        <TextView
+            android:id="@+id/notif_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textSize="11sp"
+            android:maxLines="1" />
+
+    </LinearLayout>
+
+</LinearLayout>

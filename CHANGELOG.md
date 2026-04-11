@@ -10,6 +10,12 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
+- ✅ Notificaciones ricas de corte/pago con miniatura de tarjeta personalizada (ADR-046)
+  - Vista colapsada: ícono propio `ic_notification_card`, large icon con la mini tarjeta en el color de la tarjeta, acento de color en el encabezado del sistema
+  - Vista expandida: layout `notification_expanded.xml` con thumbnail de tarjeta (gradiente + chip dorado + banco + ••••XXXX) + badge CORTE/PAGO, nombre, días restantes y fecha formateada
+  - `CardBitmapHelper` genera el bitmap con Canvas (gradiente tricolor, shimmer, chip EMV, texto monospace para dígitos)
+  - `ReminderScheduler` calcula y pasa la fecha del evento formateada en español ("viernes, 18 de abril")
+  - `CardNotificationData` centraliza todos los datos de presentación; elimina los `title`/`message` genéricos anteriores
 - ✅ Onboarding de primer lanzamiento con HorizontalPager de 7 páginas (ADR-041)
   - 6 páginas de features: tarjetas, gastos, OCR, recordatorios, presupuesto, ingresos/widget
   - Última página integra el input de nombre del usuario

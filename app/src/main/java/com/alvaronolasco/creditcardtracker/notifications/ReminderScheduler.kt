@@ -11,6 +11,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,19 +30,24 @@ class ReminderScheduler @Inject constructor(
         cancelReminders(card)
         configs.filter { it.enabled }.forEach { config ->
             val targetDay = if (config.type == "CUT_OFF") card.cutOffDay else card.paymentDueDay
-            val triggerTime = calculateTriggerTime(targetDay, config.daysBefore)
+            val (triggerTime, eventDate) = calculateTriggerTimeAndDate(targetDay, config.daysBefore)
 
             // Skip if trigger time is in the past
             if (triggerTime <= System.currentTimeMillis()) return@forEach
 
             val id = alarmId(card.id, config.type, config.daysBefore)
-            val eventName = if (config.type == "CUT_OFF") "corte" else "pago"
-            val daysText = if (config.daysBefore == 0) "es hoy" else "es en ${config.daysBefore} día(s)"
 
             val intent = Intent(context, ReminderReceiver::class.java).apply {
-                putExtra("title", "Tarjeta ${card.name} — ${card.bank}")
-                putExtra("message", "Tu fecha de $eventName $daysText")
-                putExtra("id", id)
+                // Card identity & display data
+                putExtra(ReminderReceiver.EXTRA_CARD_NAME, card.name)
+                putExtra(ReminderReceiver.EXTRA_BANK, card.bank)
+                putExtra(ReminderReceiver.EXTRA_LAST_FOUR, card.lastFourDigits)
+                putExtra(ReminderReceiver.EXTRA_CARD_COLOR, card.color)
+                // Notification context
+                putExtra(ReminderReceiver.EXTRA_NOTIFICATION_TYPE, config.type)
+                putExtra(ReminderReceiver.EXTRA_DAYS_BEFORE, config.daysBefore)
+                putExtra(ReminderReceiver.EXTRA_EVENT_DATE, eventDate)
+                putExtra(ReminderReceiver.EXTRA_ID, id)
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -70,15 +77,32 @@ class ReminderScheduler @Inject constructor(
         }
     }
 
-    private fun calculateTriggerTime(dayOfMonth: Int, daysBefore: Int): Long {
+    /**
+     * Returns the trigger epoch-millis (9:00 AM on the reminder day) and a formatted
+     * string of the actual event date (e.g. "viernes, 18 de abril").
+     */
+    private fun calculateTriggerTimeAndDate(dayOfMonth: Int, daysBefore: Int): Pair<Long, String> {
         val today = LocalDate.now()
         var targetDate = today.withDayOfMonth(dayOfMonth.coerceIn(1, today.lengthOfMonth()))
         if (targetDate.isBefore(today) || targetDate == today) {
             val next = targetDate.plusMonths(1)
             targetDate = next.withDayOfMonth(dayOfMonth.coerceIn(1, next.lengthOfMonth()))
         }
+
+        val formattedEventDate = buildFormattedDate(targetDate)
+
         val reminderDate = targetDate.minusDays(daysBefore.toLong())
         val triggerDateTime = LocalDateTime.of(reminderDate, LocalTime.of(9, 0))
-        return triggerDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val triggerMillis = triggerDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        return Pair(triggerMillis, formattedEventDate)
+    }
+
+    /** "viernes, 18 de abril" */
+    private fun buildFormattedDate(date: LocalDate): String {
+        val locale = Locale("es")
+        val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
+        val monthName = date.month.getDisplayName(TextStyle.FULL, locale)
+        return "$dayName, ${date.dayOfMonth} de $monthName"
     }
 }

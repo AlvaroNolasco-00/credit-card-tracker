@@ -63,6 +63,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-043](architecture/ADR-043-ocr-dark-mode-and-scoped-correction.md) | OCR — Detección Adaptativa de Dark Mode y Corrección de Caracteres Scoped | architecture | Aceptado | 2026-04-09 |
 | [ADR-044](ui/ADR-044-card-usage-stats-feature.md) | Funcionalidad de Estadísticas de Uso de Tarjeta — Gráfico Histórico y Calendario | ui | Aceptado | 2026-04-10 |
 | [ADR-045](ui/ADR-045-image-crop-canvas-layered-architecture.md) | Refactorización ImageCropCanvas — Arquitectura de Capas para Gestos | ui | Aceptado | 2026-04-11 |
+| [ADR-046](ui/ADR-046-rich-notifications-card-thumbnail.md) | Notificaciones ricas con miniatura de tarjeta personalizada (Canvas bitmap + RemoteViews) | ui | Aceptado | 2026-04-11 |
 
 ## Regla de escritura
 
