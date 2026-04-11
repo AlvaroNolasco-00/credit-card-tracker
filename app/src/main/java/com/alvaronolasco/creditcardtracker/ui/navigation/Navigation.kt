@@ -19,6 +19,7 @@ import com.alvaronolasco.creditcardtracker.ui.components.CameraPreviewScreen
 import com.alvaronolasco.creditcardtracker.ui.onboarding.OnboardingScreen
 import com.alvaronolasco.creditcardtracker.ui.activity.ActivityScreen
 import com.alvaronolasco.creditcardtracker.ui.support.SupportScreen
+import com.alvaronolasco.creditcardtracker.ui.stats.CardStatsScreen
 import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 
 @Composable
@@ -59,8 +60,17 @@ fun Navigation(startDestination: String = "dashboard") {
                 onSearchClick = { navController.navigate("search_expenses") },
                 onExpenseClick = { expenseId -> navController.navigate("edit_expense/$expenseId") },
                 onSupportClick = { navController.navigate("support_developer") },
-                onActivityClick = { navController.navigate("activity") }
+                onActivityClick = { navController.navigate("activity") },
+                onStatsClick = { cardId -> navController.navigate("card_stats/$cardId") }
             )
+        }
+
+        composable(
+            route = "card_stats/{cardId}",
+            arguments = listOf(navArgument("cardId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val cardId = backStackEntry.arguments?.getInt("cardId") ?: 0
+            CardStatsScreen(cardId = cardId, onBack = { navController.popBackStack() })
         }
 
         composable("activity") {

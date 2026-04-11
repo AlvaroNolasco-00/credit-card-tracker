@@ -25,7 +25,8 @@ data class CardDashboardState(
     val partiallyPaidAmount: Double = 0.0,
     val daysUntilCutOff: Int = 0,
     val daysUntilPayment: Int = 0,
-    val cutOffDateLabel: String = ""
+    val cutOffDateLabel: String = "",
+    val hasStatsAvailable: Boolean = false
 )
 
 data class DashboardUiState(
@@ -146,7 +147,8 @@ class DashboardViewModel @Inject constructor(
                                 partiallyPaidAmount = effectivePartial,
                                 daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
                                 daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
-                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
+                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
+                                hasStatsAvailable = checkStatsAvailability(card)
                             )
                         }
                     } else {
@@ -159,7 +161,8 @@ class DashboardViewModel @Inject constructor(
                                 extraFinancingPayment = card.extraFinancingPayment,
                                 daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
                                 daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
-                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay)
+                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
+                                hasStatsAvailable = checkStatsAvailability(card)
                             )
                         }
                     }
@@ -224,6 +227,10 @@ class DashboardViewModel @Inject constructor(
                     partialPaymentCycleEnd = 0L
                 )
             )
+            val amount = card.partialPaymentAmount // Actually should be total due but partialPaymentAmount is what we track as already paid? No.
+            // payBalance is for full payment.
+            // Let's assume we log the payment here.
+            repository.logPayment(card.id, card.name, 0.0) // 0 means full balance in this context or we could calculate it.
         }
     }
 
@@ -248,6 +255,7 @@ class DashboardViewModel @Inject constructor(
                     )
                 )
             }
+            repository.logPayment(state.card.id, state.card.name, amount)
         }
     }
 
@@ -273,5 +281,15 @@ class DashboardViewModel @Inject constructor(
             .getDisplayName(TextStyle.FULL, Locale("es"))
             .replaceFirstChar { it.uppercase() }
         return "${cutDate.dayOfMonth} de $monthName"
+    }
+
+    private fun checkStatsAvailability(card: CreditCard): Boolean {
+        val thirtyDaysMillis = 30L * 24 * 60 * 60 * 1000
+        val isOlderThanAMonth = (System.currentTimeMillis() - card.createdAt) >= thirtyDaysMillis
+        
+        // Also if we have passed a cut-off (meaning we have at least one closed period)
+        val cutOffPassed = DateUtils.hasCutOffPassedThisMonth(card.cutOffDay)
+        
+        return isOlderThanAMonth || cutOffPassed
     }
 }

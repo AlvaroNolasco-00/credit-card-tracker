@@ -60,4 +60,29 @@ object DateUtils {
             endDate.atTime(23, 59, 59).toEpochSecond(java.time.ZoneOffset.UTC) * 1000
         )
     }
+
+    fun getPeriodsRange(cutOffDay: Int, count: Int): List<Pair<Long, Long>> {
+        val periods = mutableListOf<Pair<Long, Long>>()
+        val today = LocalDate.now()
+        
+        // Start from current period and go back
+        var currentStartBasis = today.withDayOfMonth(cutOffDay.coerceIn(1, today.lengthOfMonth()))
+        if (currentStartBasis.isAfter(today)) {
+            currentStartBasis = currentStartBasis.minusMonths(1)
+        }
+
+        for (i in 0 until count) {
+            val start = currentStartBasis.minusMonths(i.toLong())
+            val end = start.plusMonths(1).minusDays(1)
+            
+            periods.add(
+                Pair(
+                    start.atStartOfDay().toEpochSecond(java.time.ZoneOffset.UTC) * 1000,
+                    end.atTime(23, 59, 59).toEpochSecond(java.time.ZoneOffset.UTC) * 1000
+                )
+            )
+        }
+        
+        return periods.reversed()
+    }
 }

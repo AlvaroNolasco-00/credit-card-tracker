@@ -21,6 +21,9 @@ interface ActivityLogDao {
     @Insert
     suspend fun insertLog(log: ActivityLog)
 
+    @Query("SELECT * FROM activity_logs WHERE entityId = :entityId AND entityType = :entityType AND timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
+    fun getLogsByEntityInPeriod(entityId: Int, entityType: String, start: Long, end: Long): Flow<List<ActivityLog>>
+
     @Query("DELETE FROM activity_logs WHERE timestamp < :before")
     suspend fun deleteLogsBefore(before: Long)
 }

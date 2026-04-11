@@ -55,6 +55,7 @@ fun DashboardScreen(
     onExpenseClick: (Int) -> Unit,
     onSupportClick: () -> Unit,
     onActivityClick: () -> Unit,
+    onStatsClick: (Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -217,7 +218,8 @@ fun DashboardScreen(
                                 if (page < uiState.cards.size) {
                                     CreditCardPagerItem(
                                         state = uiState.cards[page],
-                                        onClick = { onCardClick(uiState.cards[page].card.id) }
+                                        onClick = { onCardClick(uiState.cards[page].card.id) },
+                                        onStatsClick = { onStatsClick(uiState.cards[page].card.id) }
                                     )
                                 } else {
                                     AddCardTile(onClick = onAddCard)
@@ -378,7 +380,8 @@ fun DashboardScreen(
 @Composable
 fun CreditCardPagerItem(
     state: CardDashboardState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onStatsClick: () -> Unit
 ) {
     val totalDue = if (state.cutOffHappenedThisMonth)
         state.cutPeriodTotal + state.totalSpent + state.extraFinancingPayment
@@ -537,11 +540,33 @@ fun CreditCardPagerItem(
                             fontSize = 14.sp
                         )
                     }
+
+                    Row {
+                    if (state.hasStatsAvailable) {
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .clickable { onStatsClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Insights,
+                                contentDescription = "Ver estadísticas",
+                                tint = Color(state.card.color),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color.White),
+                            .background(Color.White)
+                            .clickable { onClick() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -555,6 +580,7 @@ fun CreditCardPagerItem(
             }
         }
     }
+}
 }
 
 @Composable

@@ -61,6 +61,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-041](ui/ADR-041-ocr-loading-state-ux.md) | OCR Loading State UX Improvement — Overlay oscuro, spinner + texto descriptivo, deshabilitar botones conflictivos | ui | Aceptado | 2026-04-08 |
 | [ADR-042](ui/ADR-042-custom-card-color-picker-wcag.md) | Selector de color de tarjeta personalizado con WCAG Contrast Ratio | ui | Aceptado | 2026-04-08 |
 | [ADR-043](architecture/ADR-043-ocr-dark-mode-and-scoped-correction.md) | OCR — Detección Adaptativa de Dark Mode y Corrección de Caracteres Scoped | architecture | Aceptado | 2026-04-09 |
+| [ADR-044](ui/ADR-044-card-usage-stats-feature.md) | Funcionalidad de Estadísticas de Uso de Tarjeta — Gráfico Histórico y Calendario | ui | Aceptado | 2026-04-10 |
 
 ## Regla de escritura
 

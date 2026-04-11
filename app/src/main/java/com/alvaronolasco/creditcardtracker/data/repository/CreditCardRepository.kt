@@ -45,6 +45,18 @@ class CreditCardRepository @Inject constructor(
         )
     }
 
+    suspend fun logPayment(cardId: Int, cardName: String, amount: Double) {
+        activityLogDao.insertLog(
+            ActivityLog(
+                category = "CARD",
+                action = "PAYMENT",
+                description = "Pago de \$${String.format("%.2f", amount)} a tarjeta '$cardName'",
+                entityId = cardId,
+                entityType = "CARD"
+            )
+        )
+    }
+
     // Categories
     fun getAllCategories(): Flow<List<Category>> = categoryDao.getAllCategories()
     suspend fun insertCategory(category: Category): Long {
@@ -68,6 +80,8 @@ class CreditCardRepository @Inject constructor(
         expenseDao.getExpensesWithCategoriesByCard(cardId)
     fun getExpensesByCardInPeriod(cardId: Int, start: Long, end: Long): Flow<List<Expense>> =
         expenseDao.getExpensesByCardInPeriod(cardId, start, end)
+    fun getExpensesWithCategoriesInPeriod(cardId: Int, start: Long, end: Long): Flow<List<ExpenseWithCategories>> =
+        expenseDao.getExpensesWithCategoriesByCardInPeriod(cardId, start, end)
     fun getTotalSpentInPeriod(cardId: Int, start: Long, end: Long): Flow<Double?> =
         expenseDao.getTotalSpentInPeriod(cardId, start, end)
     suspend fun insertExpense(expense: Expense): Long {
@@ -169,5 +183,7 @@ class CreditCardRepository @Inject constructor(
     // Activity Logs
     fun getAllActivityLogs(): Flow<List<ActivityLog>> = activityLogDao.getAllLogs()
     fun getActivityLogsByCategory(category: String): Flow<List<ActivityLog>> = activityLogDao.getLogsByCategory(category)
+    fun getLogsByEntityInPeriod(entityId: Int, entityType: String, start: Long, end: Long): Flow<List<ActivityLog>> = 
+        activityLogDao.getLogsByEntityInPeriod(entityId, entityType, start, end)
     suspend fun getActivityLogById(id: Int): ActivityLog? = activityLogDao.getLogById(id)
 }
