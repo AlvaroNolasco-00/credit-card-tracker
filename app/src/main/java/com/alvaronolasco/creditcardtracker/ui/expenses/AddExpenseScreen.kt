@@ -995,49 +995,22 @@ private fun ImageCropCanvas(
                 .weight(1f)
                 .clipToBounds()            // keep zoomed image inside this area
                 .onSizeChanged { composableSize = it }
-                // Zoom/pan — only active when NOT in draw mode.
-                // Keyed on isDrawMode so the gesture detector resets when mode changes,
-                // preventing stale gesture state from carrying over.
-                .pointerInput(isDrawMode) {
-                    if (!isDrawMode) {
-                        detectTransformGestures { centroid, pan, zoom, _ ->
-                            val prevScale = scale
-                            scale = (scale * zoom).coerceIn(1f, 5f)
-                            // Zoom around the pinch centroid, then apply pan.
-                            val ratio = scale / prevScale
-                            imageCenter = centroid + (imageCenter - centroid) * ratio + pan
-                        }
-                    }
-                }
-                // Draw mode — intercepts DOWN at Initial pass so the event is consumed
-                // BEFORE detectTransformGestures (which runs at Main pass) can treat it
-                // as a pan and shift the image.
-                .pointerInput(isDrawMode) {
-                    if (!isDrawMode) return@pointerInput
-                    awaitEachGesture {
-                        // Grab the finger-down at the Initial pass — highest priority,
-                        // before any other detector sees the event.
-                        var event = awaitPointerEvent(PointerEventPass.Initial)
-                        var firstPointer = event.changes.firstOrNull { it.pressed && !it.previousPressed }
-                        while (firstPointer == null) {
-                            event = awaitPointerEvent(PointerEventPass.Initial)
-                            firstPointer = event.changes.firstOrNull { it.pressed && !it.previousPressed }
-                        }
-                        selStart = firstPointer.position
-                        selEnd = firstPointer.position
-                        firstPointer.consume()
-                        val trackId = firstPointer.id
-                        while (true) {
-                            val dragEvent = awaitPointerEvent(PointerEventPass.Initial)
-                            val drag = dragEvent.changes.firstOrNull { it.id == trackId } ?: break
-                            selEnd = drag.position
-                            drag.consume()
-                            if (!drag.pressed) break
-                        }
-                    }
-                }
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
+            // LAYER 1 — Image with zoom/pan gestures
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(isDrawMode) {
+                        if (!isDrawMode) {
+                            detectTransformGestures { centroid, pan, zoom, _ ->
+                                val prevScale = scale
+                                scale = (scale * zoom).coerceIn(1f, 5f)
+                                val ratio = scale / prevScale
+                                imageCenter = centroid + (imageCenter - centroid) * ratio + pan
+                            }
+                        }
+                    }
+            ) {
                 val bmp = bitmap ?: return@Canvas
                 val rect = imageRect ?: return@Canvas
 
@@ -1046,7 +1019,26 @@ private fun ImageCropCanvas(
                     dstOffset = IntOffset(rect.left.toInt(), rect.top.toInt()),
                     dstSize = IntSize(rect.width.toInt(), rect.height.toInt())
                 )
+            }
 
+            // LAYER 2 — Selection overlay with draw gestures
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(isDrawMode) {
+                        if (!isDrawMode) return@pointerInput
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            selStart = down.position
+                            selEnd = down.position
+                            down.consume()
+                            drag(down.id) { change ->
+                                selEnd = change.position
+                                change.consume()
+                            }
+                        }
+                    }
+            ) {
                 val s = selStart; val e = selEnd
                 if (s != null && e != null) {
                     val left = minOf(s.x, e.x)

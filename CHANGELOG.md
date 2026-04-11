@@ -44,10 +44,11 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 🐛 Ruido de OCR: Porcentajes (ej. "16%") y códigos postales ya no se capturan como montos válidos
 - 🐛 Robustez: Eliminados edge cases en parsing de montos con separadores inconsistentes
 - 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)
-- 🐛 **ImageCropCanvas:** La imagen ya no se desplaza al tocar en modo "Seleccionar". Causa: `detectTransformGestures` recibía el mismo evento `DOWN` que el draw handler y lo interpretaba como pan. Fix: ambos `pointerInput` keyed en `isDrawMode` (se reinician al cambiar modo) + draw handler usa `PointerEventPass.Initial` para consumir el evento antes que el detector de transformaciones.
-  **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt`
+- 🐛 **ImageCropCanvas — Refactorización a Arquitectura de Capas (ADR-045):** Eliminación del comportamiento errático al cambiar entre modos. Arquitectura anterior tenía dos `pointerInput` compitiendo en el mismo `Box` + hack `PointerEventPass.Initial` frágil. Solución: separar en dos Canvas apilados con responsabilidades limpias (Layer 1: imagen + zoom/pan | Layer 2: overlay + dibujo con `awaitFirstDown()` + `drag()`). Resultado: gestos estables, sin interferencia entre modos, código mantenible.
+  **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt` (líneas 992–1070)
 
 **ADRs:** 
+- [ADR-045](docs/adr/ui/ADR-045-image-crop-canvas-layered-architecture.md) — Refactorización ImageCropCanvas con arquitectura de capas
 - [ADR-041](docs/adr/ui/ADR-041-ocr-loading-state-ux.md) — OCR Loading State UX Improvement
 - [ADR-038](docs/adr/architecture/ADR-038-ocr-accuracy-improvements.md) — OCR Accuracy Improvements
 - [ADR-036](docs/adr/architecture/ADR-036-ocr-amount-scoring-system.md) — Unified scoring system
