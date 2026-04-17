@@ -452,16 +452,17 @@ private fun OtherSupportSection(
             Text("Calificar en Play Store", fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(10.dp))
-        OutlinedButton(
+        Button(
             onClick = onShareClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = CircleShape,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = ForestGreen
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ForestGreen,
+                contentColor = Color.White
             ),
-            border = androidx.compose.foundation.BorderStroke(1.dp, ForestGreen.copy(alpha = 0.5f))
+            elevation = ButtonDefaults.buttonElevation(0.dp)
         ) {
             Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
