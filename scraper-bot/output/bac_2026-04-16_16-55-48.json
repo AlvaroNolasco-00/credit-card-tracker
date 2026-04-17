@@ -1,0 +1,62 @@
+{
+    "last_updated": "2026-04-16T16:55:48.952422",
+    "run_timestamp": "2026-04-16_16-55-48",
+    "total_promotions": 5,
+    "promotions": [
+        {
+            "bank": "BAC Credomatic",
+            "merchant": "Adelanto de Salario",
+            "title": "Adelanto de Salario",
+            "description": "",
+            "category": null,
+            "valid_until": "Válido hasta: Tuesday 30, Jun, 2026",
+            "days": null,
+            "benefit": null,
+            "image": "https://www.baccredomatic.com/sites/default/files/styles/real_estate_1000_560_/public/2026-03/sv-banner-promocion-ads_aficion-30032026.png.webp?itok=nY4BjUDy"
+        },
+        {
+            "bank": "BAC Credomatic",
+            "merchant": "Porque recibes tu salario con BAC",
+            "title": "Porque recibes tu salario con BAC",
+            "description": "",
+            "category": null,
+            "valid_until": "Válido hasta: Thursday 30, Apr, 2026",
+            "days": null,
+            "benefit": null,
+            "image": "https://www.baccredomatic.com/sites/default/files/styles/real_estate_1000_560_/public/2026-02/sv-banner-promocion-sorteo_planillero_bel-26022026.jpg.webp?itok=KiXy919b"
+        },
+        {
+            "bank": "BAC Credomatic",
+            "merchant": "Abre tu cuenta con montos de apertura especiales y llévate regalos al instante",
+            "title": "Abre tu cuenta con montos de apertura especiales y llévate regalos al instante",
+            "description": "",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.baccredomatic.com/sites/default/files/styles/real_estate_1000_560_/public/2026-01/sv-banner-promocion-ahorroton_plus-13012026.webp?itok=f54ZrY6n"
+        },
+        {
+            "bank": "BAC Credomatic",
+            "merchant": "¡Disfrútalo con compra en Cuotas 6 y 12 meses!",
+            "title": "¡Disfrútalo con compra en Cuotas 6 y 12 meses!",
+            "description": "",
+            "category": null,
+            "valid_until": "Válido hasta: Friday 01, Jan, 2027",
+            "days": null,
+            "benefit": null,
+            "image": "https://www.baccredomatic.com/sites/default/files/styles/real_estate_1000_560_/public/2026-01/sv-banner-promocion-cuotas_pricesmart-05012026.jpg.webp?itok=gKO-2EWf"
+        },
+        {
+            "bank": "BAC Credomatic",
+            "merchant": "Beneficios con tu tarjeta de débito BAC",
+            "title": "Beneficios con tu tarjeta de débito BAC",
+            "description": "",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.baccredomatic.com/sites/default/files/styles/real_estate_1000_560_/public/2026-02/sv-banner-promocion-ciclo_de_vida_debito-25022026.webp?itok=sbuKecNZ"
+        }
+    ]
+}

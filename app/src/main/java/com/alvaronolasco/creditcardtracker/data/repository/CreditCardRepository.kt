@@ -87,8 +87,9 @@ class CreditCardRepository @Inject constructor(
     suspend fun insertExpense(expense: Expense): Long {
         val id = expenseDao.insertExpense(expense)
         val desc = if (expense.description.isNotBlank()) expense.description else "Sin descripción"
+        val label = if (expense.cardId == null) "Gasto personal" else "Gasto"
         activityLogDao.insertLog(
-            ActivityLog(category = "EXPENSE", action = "CREATED", description = "Gasto '$desc' por \$${String.format("%.2f", expense.amount)} agregado", entityId = id.toInt(), entityType = "EXPENSE")
+            ActivityLog(category = "EXPENSE", action = "CREATED", description = "$label '$desc' por \$${String.format("%.2f", expense.amount)} agregado", entityId = id.toInt(), entityType = "EXPENSE")
         )
         return id
     }
@@ -110,6 +111,10 @@ class CreditCardRepository @Inject constructor(
         expenseDao.getExpenseWithCategoriesById(id)
     fun getAllExpensesWithCategoriesInPeriod(start: Long, end: Long): Flow<List<ExpenseWithCategories>> =
         expenseDao.getAllExpensesWithCategoriesInPeriod(start, end)
+    fun getNonCardExpensesInPeriod(start: Long, end: Long): Flow<List<ExpenseWithCategories>> =
+        expenseDao.getNonCardExpensesInPeriod(start, end)
+    fun getTotalNonCardSpentInPeriod(start: Long, end: Long): Flow<Double?> =
+        expenseDao.getTotalNonCardSpentInPeriod(start, end)
     suspend fun setExpenseCategories(expenseId: Int, categoryIds: List<Int>) {
         expenseCategoryDao.replaceExpenseCategories(expenseId, categoryIds)
         activityLogDao.insertLog(

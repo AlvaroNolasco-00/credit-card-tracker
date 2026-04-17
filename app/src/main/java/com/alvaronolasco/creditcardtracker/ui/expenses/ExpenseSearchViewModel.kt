@@ -92,6 +92,6 @@ class ExpenseSearchViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true) }
     }
 
-    fun cardNameForExpense(cardId: Int): String =
-        _uiState.value.cards.find { it.id == cardId }?.name ?: ""
+    fun cardNameForExpense(cardId: Int?): String =
+        if (cardId == null) "Personal" else _uiState.value.cards.find { it.id == cardId }?.name ?: ""
 }

@@ -1,0 +1,73 @@
+{
+    "last_updated": "2026-04-16T16:57:45.367248",
+    "run_timestamp": "2026-04-16_16-57-45",
+    "total_promotions": 6,
+    "promotions": [
+        {
+            "bank": "Banco Promerica",
+            "merchant": "CUOTAS TRAVELER",
+            "title": "CUOTAS TRAVELER",
+            "description": "",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://prowebimages.blob.core.windows.net/elsalvador/0006658_cuotas-traveler_635.jpeg"
+        },
+        {
+            "bank": "Banco Promerica",
+            "merchant": "CUOTAS RENTA",
+            "title": "CUOTAS RENTA",
+            "description": "El 1 de marzo al 30 de abril de 2026.",
+            "category": null,
+            "valid_until": "1 de marzo al 30 de abril de 2026",
+            "days": null,
+            "benefit": null,
+            "image": "https://prowebimages.blob.core.windows.net/elsalvador/0006700_cuotas-renta_635.jpeg"
+        },
+        {
+            "bank": "Banco Promerica",
+            "merchant": "KIP",
+            "title": "KIP",
+            "description": "Los viernes de abril de 2026",
+            "category": null,
+            "valid_until": "Los viernes de abril",
+            "days": null,
+            "benefit": null,
+            "image": "https://prowebimages.blob.core.windows.net/elsalvador/0006726_kip_635.jpeg"
+        },
+        {
+            "bank": "Banco Promerica",
+            "merchant": "DESCUENTO PAGO DE RENTA",
+            "title": "DESCUENTO PAGO DE RENTA",
+            "description": "Los lunes 6, 13, 20 y 27 de abril 2026",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://prowebimages.blob.core.windows.net/elsalvador/0006744_descuento-pago-de-renta_635.jpeg"
+        },
+        {
+            "bank": "Banco Promerica",
+            "merchant": "POPEYES",
+            "title": "POPEYES",
+            "description": "Precio especial en Combo Promerica de Chicken Sandwich Clásico al pagar con tu Tarjeta Promerica",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://prowebimages.blob.core.windows.net/elsalvador/0006724_popeyes_635.jpeg"
+        },
+        {
+            "bank": "Banco Promerica",
+            "merchant": "TEQUILA FEST",
+            "title": "TEQUILA FEST",
+            "description": "Del 1 al 18 de abril recibe 20% de descuento en entradas de Tequila Fest, al pagar con tu Tarjeta Promerica",
+            "category": null,
+            "valid_until": "Del 1 al 18 de abril",
+            "days": null,
+            "benefit": null,
+            "image": "https://prowebimages.blob.core.windows.net/elsalvador/0006725_tequila-fest_635.jpeg"
+        }
+    ]
+}

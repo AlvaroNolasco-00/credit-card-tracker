@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
         BudgetItem::class,
         ActivityLog::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -52,6 +52,36 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL(
                     "ALTER TABLE credit_cards ADD COLUMN partialPaymentCycleEnd INTEGER NOT NULL DEFAULT 0"
                 )
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS expenses_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        cardId INTEGER,
+                        amount REAL NOT NULL,
+                        description TEXT NOT NULL,
+                        receiptImagePath TEXT,
+                        ocrRawText TEXT,
+                        date INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL DEFAULT 0,
+                        msiMonths INTEGER NOT NULL DEFAULT 1,
+                        msiMonthlyAmount REAL NOT NULL DEFAULT 0.0,
+                        msiEndDate INTEGER NOT NULL DEFAULT 0,
+                        paymentMethod TEXT NOT NULL DEFAULT 'CREDIT_CARD',
+                        FOREIGN KEY(cardId) REFERENCES credit_cards(id) ON DELETE SET NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    INSERT INTO expenses_new (id, cardId, amount, description, receiptImagePath, ocrRawText, date, createdAt, msiMonths, msiMonthlyAmount, msiEndDate, paymentMethod)
+                    SELECT id, cardId, amount, description, receiptImagePath, ocrRawText, date, createdAt, msiMonths, msiMonthlyAmount, msiEndDate, 'CREDIT_CARD'
+                    FROM expenses
+                """.trimIndent())
+                database.execSQL("DROP TABLE expenses")
+                database.execSQL("ALTER TABLE expenses_new RENAME TO expenses")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_expenses_cardId ON expenses(cardId)")
             }
         }
 
@@ -132,7 +162,7 @@ abstract class AppDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

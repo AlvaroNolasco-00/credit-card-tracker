@@ -54,6 +54,7 @@ fun Navigation(startDestination: String = "dashboard") {
                 onAddCard = { navController.navigate("add_card") },
                 onCardClick = { cardId -> navController.navigate("edit_card/$cardId") },
                 onAddExpense = { cardId -> navController.navigate("add_expense/$cardId") },
+                onAddPersonalExpense = { navController.navigate("add_personal_expense") },
                 onIncomeClick = { navController.navigate("income_setup") },
                 onBudgetClick = { navController.navigate("budget") },
                 onCameraOpen = { navController.navigate("camera_preview") },
@@ -128,6 +129,15 @@ fun Navigation(startDestination: String = "dashboard") {
             )
         }
 
+        composable("add_personal_expense") {
+            AddExpenseScreen(
+                cardId = null,
+                onBack = { navController.popBackStack() },
+                onOpenCamera = { navController.navigate("camera_preview") },
+                navController = navController
+            )
+        }
+
         composable("camera_preview") {
             CameraPreviewScreen(
                 onImageCaptured = { uri ->
@@ -144,7 +154,7 @@ fun Navigation(startDestination: String = "dashboard") {
         ) { backStackEntry ->
             val expenseId = backStackEntry.arguments?.getInt("expenseId") ?: 0
             AddExpenseScreen(
-                cardId = 0,
+                cardId = null,
                 expenseId = expenseId,
                 onBack = { navController.popBackStack() },
                 onOpenCamera = { navController.navigate("camera_preview") },

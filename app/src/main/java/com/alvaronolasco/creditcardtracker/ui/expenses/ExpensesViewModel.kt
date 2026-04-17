@@ -9,6 +9,7 @@ import com.alvaronolasco.creditcardtracker.data.entity.Category
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.Expense
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
+import com.alvaronolasco.creditcardtracker.data.entity.PaymentMethod
 import java.util.Calendar
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
 import com.alvaronolasco.creditcardtracker.ocr.Confidence
@@ -84,6 +85,10 @@ class ExpensesViewModel @Inject constructor(
         }
     }
 
+    fun clearCurrentCard() {
+        _uiState.update { it.copy(currentCard = null) }
+    }
+
     fun loadExpense(expenseId: Int) {
         viewModelScope.launch {
             val expenseWithCategories = repository.getExpenseWithCategoriesById(expenseId)
@@ -153,7 +158,7 @@ class ExpensesViewModel @Inject constructor(
     }
 
     fun saveExpense(
-        cardId: Int,
+        cardId: Int?,
         amount: Double,
         description: String,
         categoryIds: List<Int>,
@@ -161,6 +166,7 @@ class ExpensesViewModel @Inject constructor(
         date: Long,
         expenseId: Int? = null,
         msiMonths: Int = 1,
+        paymentMethod: PaymentMethod = PaymentMethod.CREDIT_CARD,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
@@ -178,9 +184,10 @@ class ExpensesViewModel @Inject constructor(
                 description = description,
                 receiptImagePath = imagePath,
                 date = date,
-                msiMonths = msiMonths,
-                msiMonthlyAmount = monthlyAmount,
-                msiEndDate = msiEndDate
+                msiMonths = if (cardId != null) msiMonths else 1,
+                msiMonthlyAmount = if (cardId != null) monthlyAmount else 0.0,
+                msiEndDate = if (cardId != null) msiEndDate else 0L,
+                paymentMethod = paymentMethod.name
             )
             val savedId = if (expenseId == null) {
                 repository.insertExpense(expense).toInt()

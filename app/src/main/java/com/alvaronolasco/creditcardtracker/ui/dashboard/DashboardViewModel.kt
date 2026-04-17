@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
@@ -33,6 +34,7 @@ data class DashboardUiState(
     val cards: List<CardDashboardState> = emptyList(),
     val totalMonthlyIncome: Double = 0.0,
     val totalAllCardsSpent: Double = 0.0,
+    val totalNonCardSpent: Double = 0.0,
     val hasIncomeProfile: Boolean = false,
     val showExtraIncomePrompt: Boolean = false,
     val showMonthlyPrompt: Boolean = false,
@@ -60,10 +62,22 @@ class DashboardViewModel @Inject constructor(
 
     init {
         loadDashboard()
+        loadNonCardSpending()
         loadRecentExpenses()
         loadUserName()
         loadBudgetStatus()
         _uiState.update { it.copy(showSupportCard = userPrefs.shouldShowSupportCard()) }
+    }
+
+    private fun loadNonCardSpending() {
+        val today = LocalDate.now()
+        val monthStart = today.withDayOfMonth(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC) * 1000
+        val monthEnd = today.withDayOfMonth(today.lengthOfMonth()).atTime(23, 59, 59).toEpochSecond(ZoneOffset.UTC) * 1000
+        repository.getTotalNonCardSpentInPeriod(monthStart, monthEnd)
+            .onEach { spent ->
+                _uiState.update { it.copy(totalNonCardSpent = spent ?: 0.0) }
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun loadBudgetStatus() {

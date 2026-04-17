@@ -63,6 +63,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.alvaronolasco.creditcardtracker.data.entity.Category
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
+import com.alvaronolasco.creditcardtracker.data.entity.PaymentMethod
 import com.alvaronolasco.creditcardtracker.ui.components.*
 import com.alvaronolasco.creditcardtracker.ui.theme.Dimensions
 import java.io.File
@@ -77,7 +78,7 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseScreen(
-    cardId: Int,
+    cardId: Int? = null,
     expenseId: Int? = null,
     onBack: () -> Unit,
     onOpenCamera: () -> Unit,
@@ -99,11 +100,14 @@ fun AddExpenseScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedCardId by remember { mutableStateOf(cardId) }
     var showCardPicker by remember { mutableStateOf(false) }
+    var selectedPaymentMethod by remember {
+        mutableStateOf(if (cardId != null) PaymentMethod.CREDIT_CARD else PaymentMethod.DEBIT_CARD)
+    }
 
     val isEditMode = expenseId != null
 
     LaunchedEffect(cardId) {
-        if (!isEditMode && cardId > 0) {
+        if (!isEditMode && cardId != null && cardId > 0) {
             selectedCardId = cardId
         }
     }
@@ -122,7 +126,10 @@ fun AddExpenseScreen(
             capturedImageUri = ewc.expense.receiptImagePath?.let { Uri.parse(it) }
             selectedDateMillis = ewc.expense.date
             selectedCardId = ewc.expense.cardId
-            viewModel.loadCard(ewc.expense.cardId)
+            selectedPaymentMethod = runCatching {
+                PaymentMethod.valueOf(ewc.expense.paymentMethod)
+            }.getOrElse { PaymentMethod.CREDIT_CARD }
+            ewc.expense.cardId?.let { viewModel.loadCard(it) }
             if (ewc.expense.msiMonths > 1) {
                 msiEnabled = true
                 msiMonths = ewc.expense.msiMonths
@@ -131,7 +138,8 @@ fun AddExpenseScreen(
     }
 
     LaunchedEffect(selectedCardId) {
-        if (selectedCardId > 0) viewModel.loadCard(selectedCardId)
+        val cid = selectedCardId
+        if (cid != null && cid > 0) viewModel.loadCard(cid)
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -170,7 +178,7 @@ fun AddExpenseScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = if (isEditMode) "Editar Gasto" else "Agregar Gasto",
+                title = if (isEditMode) "Editar Gasto" else if (selectedPaymentMethod == PaymentMethod.CREDIT_CARD) "Gasto de Tarjeta" else "Gasto Personal",
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
@@ -203,11 +211,27 @@ fun AddExpenseScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SpacingMd)
         ) {
-            uiState.currentCard?.let { card ->
-                CardTargetBanner(card, onClick = { showCardPicker = true })
+            PaymentMethodSelector(
+                selected = selectedPaymentMethod,
+                onSelect = { method ->
+                    selectedPaymentMethod = method
+                    if (method != PaymentMethod.CREDIT_CARD) {
+                        selectedCardId = null
+                        viewModel.clearCurrentCard()
+                        msiEnabled = false
+                    } else if (cardId != null && cardId > 0) {
+                        selectedCardId = cardId
+                    }
+                }
+            )
+
+            if (selectedPaymentMethod == PaymentMethod.CREDIT_CARD) {
+                uiState.currentCard?.let { card ->
+                    CardTargetBanner(card, onClick = { showCardPicker = true })
+                }
             }
 
-            if (showCardPicker) {
+            if (showCardPicker && selectedPaymentMethod == PaymentMethod.CREDIT_CARD) {
                 AlertDialog(
                     onDismissRequest = { showCardPicker = false },
                     title = { Text("Cambiar tarjeta") },
@@ -295,13 +319,15 @@ fun AddExpenseScreen(
                 onClick = { showDatePicker = true }
             )
 
-            MsiSection(
-                enabled = msiEnabled,
-                onEnabledChange = { msiEnabled = it },
-                selectedMonths = msiMonths,
-                onMonthsChange = { msiMonths = it },
-                totalAmount = amount.toDoubleOrNull() ?: 0.0
-            )
+            if (selectedPaymentMethod == PaymentMethod.CREDIT_CARD) {
+                MsiSection(
+                    enabled = msiEnabled,
+                    onEnabledChange = { msiEnabled = it },
+                    selectedMonths = msiMonths,
+                    onMonthsChange = { msiMonths = it },
+                    totalAmount = amount.toDoubleOrNull() ?: 0.0
+                )
+            }
 
             Text(
                 "Categorías",
@@ -579,10 +605,12 @@ fun AddExpenseScreen(
                         date = selectedDateMillis,
                         expenseId = expenseId,
                         msiMonths = if (msiEnabled) msiMonths else 1,
+                        paymentMethod = selectedPaymentMethod,
                         onSuccess = onBack
                     )
                 },
                 enabled = amount.isNotBlank() && description.isNotBlank() && !uiState.ocrProcessing
+                    && (selectedPaymentMethod != PaymentMethod.CREDIT_CARD || selectedCardId != null)
             )
 
             if (isEditMode) {
@@ -597,6 +625,37 @@ fun AddExpenseScreen(
                 ) {
                     Text("Eliminar Gasto")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodSelector(
+    selected: PaymentMethod,
+    onSelect: (PaymentMethod) -> Unit
+) {
+    val methods = listOf(
+        PaymentMethod.DEBIT_CARD,
+        PaymentMethod.TRANSFER,
+        PaymentMethod.CASH,
+        PaymentMethod.CREDIT_CARD
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Método de pago",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(methods) { method ->
+                FilterChip(
+                    selected = selected == method,
+                    onClick = { onSelect(method) },
+                    label = { Text(method.label, style = MaterialTheme.typography.bodySmall) },
+                    shape = RoundedCornerShape(50)
+                )
             }
         }
     }

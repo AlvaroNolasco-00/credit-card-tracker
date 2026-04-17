@@ -1,0 +1,84 @@
+{
+    "last_updated": "2026-04-16T16:56:02.336218",
+    "run_timestamp": "2026-04-16_16-56-02",
+    "total_promotions": 7,
+    "promotions": [
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "15% OFF y 2x1 en Gasolineras PUMA",
+            "title": "15% OFF y 2x1 en Gasolineras PUMA",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2026/03/pptm26b-700x441.jpg"
+        },
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "Su Samsung S26 con 10% de descuento y sin interés",
+            "title": "Su Samsung S26 con 10% de descuento y sin interés",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2026/03/sanm26b-700x441.jpg"
+        },
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "Active su Tarjeta en la App, facilísimo",
+            "title": "Active su Tarjeta en la App, facilísimo",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2026/03/ratmdm26b-700x441.jpg"
+        },
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "Sus pagos del Ministerio Hacienda a cuotas sin intereses",
+            "title": "Sus pagos del Ministerio Hacienda a cuotas sin intereses",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2026/03/cpmhm26b-700x441.jpg"
+        },
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "Canjee sus Davipuntos",
+            "title": "Canjee sus Davipuntos",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2022/01/consejos-para-vivir-feliz-en-pareja-1900Wx500H-700x441.jpg"
+        },
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "20% de descuento al instante en Laboratorios Segovia",
+            "title": "20% de descuento al instante en Laboratorios Segovia",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2025/10/segobiab-700x441.jpg"
+        },
+        {
+            "bank": "Banco Davivienda",
+            "merchant": "Compre en cuotas con sus Tarjetas de Crédito Davivienda.",
+            "title": "Compre en cuotas con sus Tarjetas de Crédito Davivienda.",
+            "description": null,
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://promociones.davivienda.com.sv/wp-content/uploads/2022/01/lo-que-debes-evitar-para-ser-feliz-en-pareja-1900Wx500H-700x441.jpg"
+        }
+    ]
+}

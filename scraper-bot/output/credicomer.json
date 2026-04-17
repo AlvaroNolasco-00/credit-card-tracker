@@ -1,0 +1,171 @@
+{
+    "last_updated": "2026-04-16T16:51:43.854457",
+    "total_promotions": 15,
+    "promotions": [
+        {
+            "bank": "Credicomer",
+            "merchant": "THE COFFEE CUP",
+            "title": "THE COFFEE CUP",
+            "description": "10% DE DESCUENTO EN TU BEBIDA A BASE DE CAFE Termina en 259 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/41/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "CONSOLIDACION DE DEUDAS",
+            "title": "CONSOLIDACION DE DEUDAS",
+            "description": "HASTA EL 80% DE TU DISPONIBLE EN LA TARJETA DE CREDITO Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/60/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "NETFLIX, SPOTIFY Y YOUTUBE PREMIUM",
+            "title": "NETFLIX, SPOTIFY Y YOUTUBE PREMIUM",
+            "description": "30% DE DESCUENTO EN CADA APPS TODOS LOS MESES - REPORTA TU COMPRA Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/40/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "FARMACIA SAN BENITO",
+            "title": "FARMACIA SAN BENITO",
+            "description": "30% de descuento al instante al pagar con tu tarjeta de crédito Credicomer o emma card Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/114/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "THE COFFEE CUP",
+            "title": "THE COFFEE CUP",
+            "description": "10% DE DESCUENTO EN TU BEBIDA A BASE DE CAFE Termina en 259 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/132/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "PAGO DE IMPUESTOS SOBRE LA RENTA",
+            "title": "PAGO DE IMPUESTOS SOBRE LA RENTA",
+            "description": "Paga tu Impuesto Sobre la Renta con tu tarjeta de crédito y trasládalo a 3 ó 6 meses Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/124/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "CREDICOMER REGALON",
+            "title": "CREDICOMER REGALON",
+            "description": "Compra todo con tus tarjetas Visa crédito y débito Credicomer y emma card. Termina en 275 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/130/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "TUS COMPRAS EN EL EXTRANJERO A 6 MESES SIN INTERESES",
+            "title": "TUS COMPRAS EN EL EXTRANJERO A 6 MESES SIN INTERESES",
+            "description": "Traslada todas tus compras hechas en el extranjero y págalas a 3 o 6 cuotas Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/128/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "COMBUSTIBLE - PUMA ENERGY",
+            "title": "COMBUSTIBLE - PUMA ENERGY",
+            "description": "25% DE DESCUENTO - REPORTA TU COMPRA CADA 25 DE MES (Máximo $10.00 por cliente) Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/19/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "SUPERMERCADOS",
+            "title": "SUPERMERCADOS",
+            "description": "20% DE DESCUENTO - REPORTA TU COMPRA CADA 20 DE MES (Máximo $10 por cliente) Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/51/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "ALL AMERICAN TRAVEL",
+            "title": "ALL AMERICAN TRAVEL",
+            "description": "Hasta 20% de descuento al instante Termina en 259 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/69/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "10% EN TU PRIMERA COMPRA CON TU TARJETA EMMA CARD",
+            "title": "10% EN TU PRIMERA COMPRA CON TU TARJETA EMMA CARD",
+            "description": "Tiendas participantes: La Curacao, Radio Shack o Almacenes Tropigas Termina en 259 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/116/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "CREDICOMER REGALON",
+            "title": "CREDICOMER REGALON",
+            "description": "Compra todo con tus tarjetas Visa crédito y débito Credicomer y emma card. Termina en 275 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/123/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "Compra en cuotas en: Amazon - Temu - AliExpress y paga hasta en 6 meses sin intereses",
+            "title": "Compra en cuotas en: Amazon - Temu - AliExpress y paga hasta en 6 meses sin intereses",
+            "description": "Compra en tus comercios en línea favoritos y paga hasta en 6 cuotas. Termina en 14 dias, 07:07:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/148/image"
+        },
+        {
+            "bank": "Credicomer",
+            "merchant": "AHORRO REGALÓN MUNDIALISTA",
+            "title": "AHORRO REGALÓN MUNDIALISTA",
+            "description": "Por cada $300 que ahorres participas en la rifa de 10 TVs DE 40\" y por aperturas de $1,000 llévate una camisa mundialista Termina en 57 dias, 22:22:17 Ver Condiciones",
+            "category": null,
+            "valid_until": null,
+            "days": null,
+            "benefit": null,
+            "image": "https://www.credicomer.com.sv/api/promotions/159/image"
+        }
+    ]
+}

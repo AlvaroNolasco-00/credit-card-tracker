@@ -48,6 +48,7 @@ fun DashboardScreen(
     onAddCard: () -> Unit,
     onCardClick: (Int) -> Unit,
     onAddExpense: (Int) -> Unit,
+    onAddPersonalExpense: () -> Unit,
     onIncomeClick: () -> Unit,
     onBudgetClick: () -> Unit,
     onCameraOpen: () -> Unit,
@@ -91,6 +92,7 @@ fun DashboardScreen(
             if (!uiState.isLoading && uiState.cards.isNotEmpty()) {
                 BottomActionBar(
                     onAddExpense = { selectedCard?.let { onAddExpense(it.card.id) } },
+                    onAddPersonalExpense = onAddPersonalExpense,
                     onCameraOpen = onCameraOpen
                 )
             }
@@ -294,6 +296,7 @@ fun DashboardScreen(
                         } else {
                             SalaryUsageCard(
                                 totalSpent = uiState.totalAllCardsSpent,
+                                totalNonCardSpent = uiState.totalNonCardSpent,
                                 totalIncome = uiState.totalMonthlyIncome,
                                 onTap = onIncomeClick,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -1019,19 +1022,22 @@ fun IncomeSetupBanner(
 @Composable
 fun SalaryUsageCard(
     totalSpent: Double,
+    totalNonCardSpent: Double,
     totalIncome: Double,
     onTap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val ratio = if (totalIncome > 0) (totalSpent / totalIncome).coerceIn(0.0, 1.0) else 0.0
+    val totalUsed = totalSpent + totalNonCardSpent
+    val ratio = if (totalIncome > 0) (totalUsed / totalIncome).coerceIn(0.0, 1.0) else 0.0
     val percent = (ratio * 100).toInt()
+    val remaining = (totalIncome - totalUsed).coerceAtLeast(0.0)
 
     val barColor: Color
     val alertText: String
     when {
         ratio < 0.30 -> { barColor = Color(0xFF4CAF50); alertText = "" }
         ratio < 0.50 -> { barColor = Color(0xFFFFA000); alertText = "Estás usando bastante de tu ingreso" }
-        else         -> { barColor = Color(0xFFE53935); alertText = "¡Tus tarjetas superan el 50% de tu ingreso!" }
+        else         -> { barColor = Color(0xFFE53935); alertText = "¡Tus gastos superan el 50% de tu ingreso!" }
     }
     val bgColor = MaterialTheme.colorScheme.surfaceVariant
     val labelColor = MaterialTheme.colorScheme.onSurface
@@ -1097,16 +1103,33 @@ fun SalaryUsageCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    "Tarjetas: $${String.format("%,.0f", totalSpent)}",
-                    fontSize = 12.sp,
-                    color = labelColor
-                )
-                Text(
-                    "Ingreso: $${String.format("%,.0f", totalIncome)}",
-                    fontSize = 12.sp,
-                    color = labelColor
-                )
+                Column {
+                    Text(
+                        "Tarjetas: $${String.format("%,.0f", totalSpent)}",
+                        fontSize = 12.sp,
+                        color = labelColor
+                    )
+                    if (totalNonCardSpent > 0.0) {
+                        Text(
+                            "Personal: $${String.format("%,.0f", totalNonCardSpent)}",
+                            fontSize = 12.sp,
+                            color = labelColor.copy(alpha = 0.75f)
+                        )
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "Ingreso: $${String.format("%,.0f", totalIncome)}",
+                        fontSize = 12.sp,
+                        color = labelColor
+                    )
+                    Text(
+                        "Disponible: $${String.format("%,.0f", remaining)}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (remaining > 0) Color(0xFF4CAF50) else Color(0xFFE53935)
+                    )
+                }
             }
 
             if (alertText.isNotEmpty()) {
@@ -1315,6 +1338,7 @@ fun NameSetupBottomSheet(
 @Composable
 fun BottomActionBar(
     onAddExpense: () -> Unit,
+    onAddPersonalExpense: () -> Unit,
     onCameraOpen: () -> Unit
 ) {
     Surface(
@@ -1341,8 +1365,26 @@ fun BottomActionBar(
                 )
             ) {
                 Text(
-                    "Ingresar gasto",
-                    fontSize = 15.sp,
+                    "Tarjeta",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Button(
+                onClick = onAddPersonalExpense,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text(
+                    "Personal",
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
             }

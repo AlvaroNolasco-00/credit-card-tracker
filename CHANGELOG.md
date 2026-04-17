@@ -10,6 +10,14 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
+- ✅ Gastos no-tarjeta: débito, transferencia, efectivo, otros (ADR-047)
+  - `PaymentMethod` enum (`CREDIT_CARD`, `DEBIT_CARD`, `TRANSFER`, `CASH`, `OTHER`)
+  - `Expense.cardId` ahora nullable; `paymentMethod: String` nuevo campo
+  - Migración DB 10→11: recreación de tabla `expenses` con FK `ON DELETE SET NULL`
+  - `AddExpenseScreen`: selector de método de pago al inicio; si no es crédito, oculta CardTargetBanner y MSI
+  - Dashboard: botón "Personal" en `BottomActionBar`; ruta `add_personal_expense`
+  - `SalaryUsageCard` muestra "Tarjetas + Personal", línea "Disponible" en verde/rojo
+  - `DashboardViewModel.loadNonCardSpending()` carga total mensual de gastos personales
 - ✅ Notificaciones ricas de corte/pago con miniatura de tarjeta personalizada (ADR-046)
   - Vista colapsada: ícono propio `ic_notification_card`, large icon con la mini tarjeta en el color de la tarjeta, acento de color en el encabezado del sistema
   - Vista expandida: layout `notification_expanded.xml` con thumbnail de tarjeta (gradiente + chip dorado + banco + ••••XXXX) + badge CORTE/PAGO, nombre, días restantes y fecha formateada

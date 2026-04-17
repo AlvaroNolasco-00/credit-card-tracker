@@ -12,14 +12,14 @@ import androidx.room.PrimaryKey
             entity = CreditCard::class,
             parentColumns = ["id"],
             childColumns = ["cardId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.SET_NULL
         )
     ],
     indices = [Index("cardId")]
 )
 data class Expense(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val cardId: Int,
+    val cardId: Int?,
     val amount: Double,
     val description: String,
     val receiptImagePath: String? = null,
@@ -28,5 +28,6 @@ data class Expense(
     val createdAt: Long = System.currentTimeMillis(),
     val msiMonths: Int = 1,
     val msiMonthlyAmount: Double = 0.0,
-    val msiEndDate: Long = 0L
+    val msiEndDate: Long = 0L,
+    val paymentMethod: String = PaymentMethod.CREDIT_CARD.name
 )
