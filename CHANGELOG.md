@@ -48,6 +48,12 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - ✅ Catálogo de Bancos SV y Selector Dropdown (ADR-048)
   - `SupportedBank` enum con 6 bancos: Agrícola, Cuscatlán, BAC Credomatic, Promerica, Davivienda, Credicomer
   - Cada banco tiene `id`, `displayName` y `promotionsUrl` (para scraper futuro)
+- ✅ Alertas visuales y notificaciones de pago vencido (ADR-049)
+  - Detección de pago vencido: `DateUtils.getDaysOverduePayment()` calcula días desde vencimiento del pago del ciclo actual
+  - UI en Dashboard: banner rojo compacto, `InfoChip` con ícono Error rojo, `PayBalanceCard` con borde/ícono rojo y título de urgencia
+  - Notificaciones push escalonadas: 3 alarmas (día+1, +4, +7 tras payment due) con badge "VENCIDO" rojo
+  - `ReminderReceiver` con `@AndroidEntryPoint` verifica DB antes de notificar (si usuario pagó manualmente, no notifica)
+  - Cancelación automática de alarmas al registrar pago completo
   - Campo `bankId: String?` en `CreditCard` entity — `null` para bancos personalizados
   - `BankPicker` composable: dropdown con 6 bancos + opción "Otro (personalizado)" con texto libre
   - Migración DB v11→v12: `ALTER TABLE credit_cards ADD COLUMN bankId TEXT`

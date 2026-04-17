@@ -261,6 +261,17 @@ fun DashboardScreen(
                         }
                     }
 
+                    // Overdue payment alert banner
+                    if (selectedCard != null && selectedCard.isPaymentOverdue) {
+                        item {
+                            OverduePaymentBanner(
+                                cardName = selectedCard.card.name,
+                                daysOverdue = selectedCard.daysOverdue,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
                     // Cut-off + Payment info row
                     if (selectedCard != null) {
                         item {
@@ -656,7 +667,19 @@ fun CardInfoRow(
             showTrailing = isCutOffSoon
         )
 
-        if (state.isPaidThisCycle) {
+        if (state.isPaymentOverdue) {
+            InfoChip(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AttachMoney,
+                title = "Pago",
+                dateLabel = null,
+                statusText = "Vencido hace ${state.daysOverdue} día(s)",
+                trailingIcon = Icons.Default.Error,
+                trailingTint = Color(0xFFE53935),
+                showTrailing = true,
+                containerColor = Color(0xFFE53935).copy(alpha = 0.08f)
+            )
+        } else if (state.isPaidThisCycle) {
             InfoChip(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.AttachMoney,
@@ -773,11 +796,14 @@ fun PayBalanceCard(
         )
     }
 
+    val accentColor = if (state.isPaymentOverdue) Color(0xFFE53935) else Color(0xFF4CAF50)
+    val iconTint = if (state.isPaymentOverdue) Color(0xFFB71C1C) else Color(0xFF2E7D32)
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.4f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -787,22 +813,26 @@ fun PayBalanceCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF4CAF50).copy(alpha = 0.15f)),
+                    .background(accentColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.AttachMoney,
+                    if (state.isPaymentOverdue) Icons.Default.Error else Icons.Default.AttachMoney,
                     contentDescription = null,
-                    tint = Color(0xFF2E7D32),
+                    tint = iconTint,
                     modifier = Modifier.size(24.dp)
                 )
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    if (state.partiallyPaidAmount > 0.0) "Saldo pendiente" else "Saldo a pagar",
+                    when {
+                        state.isPaymentOverdue -> "¡Pago vencido! Registra ahora"
+                        state.partiallyPaidAmount > 0.0 -> "Saldo pendiente"
+                        else -> "Saldo a pagar"
+                    },
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (state.isPaymentOverdue) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     "$${String.format("%,.2f", remaining)}",
@@ -841,12 +871,13 @@ fun InfoChip(
     statusText: String,
     trailingIcon: ImageVector,
     trailingTint: Color,
-    showTrailing: Boolean
+    showTrailing: Boolean,
+    containerColor: Color? = null
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = containerColor ?: MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp
     ) {
         Row(
@@ -1462,6 +1493,39 @@ private fun BudgetReminderDialog(
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surface
     )
+}
+
+@Composable
+fun OverduePaymentBanner(
+    cardName: String,
+    daysOverdue: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFE53935).copy(alpha = 0.10f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.4f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Error,
+                contentDescription = null,
+                tint = Color(0xFFE53935),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "Pago de $cardName vencido hace $daysOverdue día(s) — registra tu pago",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFE53935)
+            )
+        }
+    }
 }
 
 @Composable

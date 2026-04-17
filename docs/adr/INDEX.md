@@ -66,6 +66,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-046](ui/ADR-046-rich-notifications-card-thumbnail.md) | Notificaciones ricas con miniatura de tarjeta personalizada (Canvas bitmap + RemoteViews) | ui | Aceptado | 2026-04-11 |
 | [ADR-047](data/ADR-047-non-card-expenses.md) | Gastos No-Tarjeta — cardId nullable + paymentMethod enum para débito/transferencia/efectivo | data | Aceptado | 2026-04-16 |
 | [ADR-048](data/ADR-048-bank-catalog-and-selector.md) | Catálogo de Bancos SV y Selector Dropdown — SupportedBank enum + bankId field + BankPicker UI | data, ui | Aceptado | 2026-04-17 |
+| [ADR-049](ui/ADR-049-overdue-payment-alerts.md) | Alertas visuales y notificaciones de pago vencido — banner rojo + InfoChip + alarmas escalonadas | ui, notifications | Aceptado | 2026-04-17 |
 
 ## Regla de escritura
 

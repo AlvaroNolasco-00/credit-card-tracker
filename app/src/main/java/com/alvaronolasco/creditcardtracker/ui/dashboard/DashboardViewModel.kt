@@ -6,6 +6,7 @@ import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
 import com.alvaronolasco.creditcardtracker.data.repository.UserPreferencesRepository
+import com.alvaronolasco.creditcardtracker.notifications.ReminderScheduler
 import com.alvaronolasco.creditcardtracker.util.DateUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -27,7 +28,9 @@ data class CardDashboardState(
     val daysUntilCutOff: Int = 0,
     val daysUntilPayment: Int = 0,
     val cutOffDateLabel: String = "",
-    val hasStatsAvailable: Boolean = false
+    val hasStatsAvailable: Boolean = false,
+    val isPaymentOverdue: Boolean = false,
+    val daysOverdue: Int = 0
 )
 
 data class DashboardUiState(
@@ -52,7 +55,8 @@ data class DashboardUiState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: CreditCardRepository,
-    private val userPrefs: UserPreferencesRepository
+    private val userPrefs: UserPreferencesRepository,
+    private val reminderScheduler: ReminderScheduler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -151,6 +155,7 @@ class DashboardViewModel @Inject constructor(
                         val effectivePartial = if (!isPaid && card.partialPaymentCycleEnd == prevEnd) card.partialPaymentAmount else 0.0
                         val prevFlow = repository.getTotalSpentInPeriod(card.id, prevStart, prevEnd)
                         combine(currentFlow, prevFlow) { current, prev ->
+                            val overduedays = if (!isPaid) DateUtils.getDaysOverduePayment(card.cutOffDay, card.paymentDueDay) else 0
                             CardDashboardState(
                                 card = card,
                                 totalSpent = current ?: 0.0,
@@ -162,7 +167,9 @@ class DashboardViewModel @Inject constructor(
                                 daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
                                 daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
                                 cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
-                                hasStatsAvailable = checkStatsAvailability(card)
+                                hasStatsAvailable = checkStatsAvailability(card),
+                                isPaymentOverdue = overduedays > 0,
+                                daysOverdue = overduedays
                             )
                         }
                     } else {
@@ -241,10 +248,8 @@ class DashboardViewModel @Inject constructor(
                     partialPaymentCycleEnd = 0L
                 )
             )
-            val amount = card.partialPaymentAmount // Actually should be total due but partialPaymentAmount is what we track as already paid? No.
-            // payBalance is for full payment.
-            // Let's assume we log the payment here.
-            repository.logPayment(card.id, card.name, 0.0) // 0 means full balance in this context or we could calculate it.
+            reminderScheduler.cancelOverdueAlarm(card)
+            repository.logPayment(card.id, card.name, 0.0)
         }
     }
 
@@ -260,6 +265,7 @@ class DashboardViewModel @Inject constructor(
                         partialPaymentCycleEnd = 0L
                     )
                 )
+                reminderScheduler.cancelOverdueAlarm(state.card)
             } else {
                 val (_, prevEnd) = DateUtils.getPreviousPeriodRange(state.card.cutOffDay)
                 repository.updateCard(

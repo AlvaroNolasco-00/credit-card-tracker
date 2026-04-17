@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.NotificationConfig
+import com.alvaronolasco.creditcardtracker.util.DateUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -21,6 +22,11 @@ class ReminderScheduler @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+    companion object {
+        const val TYPE_OVERDUE = "OVERDUE"
+        private val OVERDUE_DAYS_OFFSETS = listOf(1, 4, 7)
+    }
 
     // Deterministic ID from card + type + days — allows cancellation without config entity
     private fun alarmId(cardId: Int, type: String, daysBefore: Int) =
@@ -61,6 +67,48 @@ class ReminderScheduler @Inject constructor(
                 pendingIntent
             )
         }
+        scheduleOverdueAlarm(card)
+    }
+
+    fun scheduleOverdueAlarm(card: CreditCard) {
+        cancelOverdueAlarm(card)
+        val dueDate = DateUtils.getPaymentDueDateForCurrentCycle(card.cutOffDay, card.paymentDueDay)
+        OVERDUE_DAYS_OFFSETS.forEach { daysAfter ->
+            val triggerDate = dueDate.plusDays(daysAfter.toLong())
+            val triggerDateTime = LocalDateTime.of(triggerDate, LocalTime.of(10, 0))
+            val triggerMillis = triggerDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            if (triggerMillis <= System.currentTimeMillis()) return@forEach
+
+            val id = alarmId(card.id, TYPE_OVERDUE, daysAfter)
+            val intent = Intent(context, ReminderReceiver::class.java).apply {
+                putExtra(ReminderReceiver.EXTRA_CARD_ID, card.id)
+                putExtra(ReminderReceiver.EXTRA_CARD_NAME, card.name)
+                putExtra(ReminderReceiver.EXTRA_BANK, card.bank)
+                putExtra(ReminderReceiver.EXTRA_LAST_FOUR, card.lastFourDigits)
+                putExtra(ReminderReceiver.EXTRA_CARD_COLOR, card.color)
+                putExtra(ReminderReceiver.EXTRA_NOTIFICATION_TYPE, TYPE_OVERDUE)
+                putExtra(ReminderReceiver.EXTRA_DAYS_BEFORE, daysAfter)
+                putExtra(ReminderReceiver.EXTRA_EVENT_DATE, "")
+                putExtra(ReminderReceiver.EXTRA_ID, id)
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, id, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+        }
+    }
+
+    fun cancelOverdueAlarm(card: CreditCard) {
+        OVERDUE_DAYS_OFFSETS.forEach { daysAfter ->
+            val id = alarmId(card.id, TYPE_OVERDUE, daysAfter)
+            val intent = Intent(context, ReminderReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, id, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.cancel(pendingIntent)
+        }
     }
 
     fun cancelReminders(card: CreditCard) {
@@ -75,6 +123,7 @@ class ReminderScheduler @Inject constructor(
                 alarmManager.cancel(pendingIntent)
             }
         }
+        cancelOverdueAlarm(card)
     }
 
     /**

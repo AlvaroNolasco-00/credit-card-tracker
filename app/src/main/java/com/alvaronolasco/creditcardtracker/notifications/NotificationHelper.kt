@@ -64,18 +64,29 @@ class NotificationHelper(private val context: Context) {
     fun showNotification(data: CardNotificationData) {
         val pendingIntent = buildPendingIntent()
 
+        val isOverdue = data.notificationType == ReminderScheduler.TYPE_OVERDUE
         val isCutOff = data.notificationType == "CUT_OFF"
-        val eventLabel = if (isCutOff) "Corte" else "Pago"
-        val badgeLabel = if (isCutOff) "CORTE" else "PAGO"
 
-        val daysText = when (data.daysBefore) {
-            0 -> "¡Hoy!"
-            1 -> "Mañana"
+        val eventLabel = when {
+            isOverdue -> "Pago vencido"
+            isCutOff -> "Corte"
+            else -> "Pago"
+        }
+        val badgeLabel = when {
+            isOverdue -> "VENCIDO"
+            isCutOff -> "CORTE"
+            else -> "PAGO"
+        }
+
+        val daysText = when {
+            isOverdue -> "Llevas ${data.daysBefore} día(s) sin registrar tu pago"
+            data.daysBefore == 0 -> "¡Hoy!"
+            data.daysBefore == 1 -> "Mañana"
             else -> "En ${data.daysBefore} días"
         }
 
         val contentTitle = "$eventLabel · ${data.cardName}"
-        val contentText = "$daysText — ${data.eventDate}"
+        val contentText = if (isOverdue) "Si ya pagaste, ábrelo en la app y regístralo" else "$daysText — ${data.eventDate}"
 
         // --- Large icon: card-shaped bitmap (visible in collapsed notification) ---
         val largeIconBitmap = CardBitmapHelper.generateLargeIcon(
@@ -122,18 +133,23 @@ class NotificationHelper(private val context: Context) {
         )
         views.setImageViewBitmap(R.id.notif_card_image, cardBitmap)
 
-        // Badge type text + color accent
+        // Badge type text + color accent (red for overdue)
         views.setTextViewText(R.id.notif_type_badge, badgeLabel)
-        views.setTextColor(R.id.notif_type_badge, data.cardColor)
+        val badgeColor = if (data.notificationType == ReminderScheduler.TYPE_OVERDUE)
+            android.graphics.Color.parseColor("#E53935") else data.cardColor
+        views.setTextColor(R.id.notif_type_badge, badgeColor)
 
         // Card name
         views.setTextViewText(R.id.notif_card_name, "${data.cardName} · ${data.bank}")
 
-        // Message: "En 3 días" / "Mañana" / "¡Hoy!"
+        // Message: "En 3 días" / "Mañana" / "¡Hoy!" / "Llevas N días sin registrar..."
         views.setTextViewText(R.id.notif_message, daysText)
 
-        // Event date
-        views.setTextViewText(R.id.notif_date, data.eventDate.replaceFirstChar { it.uppercase() })
+        // Event date (hidden for overdue — no specific event date)
+        val dateText = if (data.notificationType == ReminderScheduler.TYPE_OVERDUE)
+            "Registra tu pago en la app"
+        else data.eventDate.replaceFirstChar { it.uppercase() }
+        views.setTextViewText(R.id.notif_date, dateText)
 
         return views
     }

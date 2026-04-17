@@ -49,6 +49,28 @@ object DateUtils {
         return !cutDate.isAfter(today)
     }
 
+    fun getPaymentDueDateForCurrentCycle(cutOffDay: Int, paymentDueDay: Int): LocalDate {
+        val today = LocalDate.now()
+        var cutOffDate = today.withDayOfMonth(cutOffDay.coerceIn(1, today.lengthOfMonth()))
+        if (cutOffDate.isAfter(today)) {
+            cutOffDate = cutOffDate.minusMonths(1)
+            cutOffDate = cutOffDate.withDayOfMonth(cutOffDay.coerceIn(1, cutOffDate.lengthOfMonth()))
+        }
+        var dueDate = cutOffDate.withDayOfMonth(paymentDueDay.coerceIn(1, cutOffDate.lengthOfMonth()))
+        if (!dueDate.isAfter(cutOffDate)) {
+            val next = cutOffDate.plusMonths(1)
+            dueDate = next.withDayOfMonth(paymentDueDay.coerceIn(1, next.lengthOfMonth()))
+        }
+        return dueDate
+    }
+
+    fun getDaysOverduePayment(cutOffDay: Int, paymentDueDay: Int): Int {
+        if (!hasCutOffPassedThisMonth(cutOffDay)) return 0
+        val today = LocalDate.now()
+        val dueDate = getPaymentDueDateForCurrentCycle(cutOffDay, paymentDueDay)
+        return if (today.isAfter(dueDate)) ChronoUnit.DAYS.between(dueDate, today).toInt() else 0
+    }
+
     fun getPreviousPeriodRange(cutOffDay: Int): Pair<Long, Long> {
         val today = LocalDate.now()
         val thisCutOff = today.withDayOfMonth(cutOffDay.coerceIn(1, today.lengthOfMonth()))
