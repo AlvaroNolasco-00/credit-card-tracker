@@ -17,5 +17,6 @@ data class CreditCard(
     val createdAt: Long = System.currentTimeMillis(),
     val lastPaymentDate: Long = 0L,
     val partialPaymentAmount: Double = 0.0,
-    val partialPaymentCycleEnd: Long = 0L
+    val partialPaymentCycleEnd: Long = 0L,
+    val bankId: String? = null
 )

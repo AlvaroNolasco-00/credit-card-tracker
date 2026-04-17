@@ -45,6 +45,14 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - ✅ Corrección de caracteres OCR (post-procesamiento): O→0, l/L/I→1, S→5, B→8, Z/2 para mitigar errores de ML Kit
 - ✅ Detección de columna de precios (Layer 2.5): detecta montos alineados verticalmente en tickets sin keywords explícitos
 - ✅ Filtro de confidence ML Kit: ignora líneas/bloques con confianza < 0.5 para reducir ruido en áreas borrosas
+- ✅ Catálogo de Bancos SV y Selector Dropdown (ADR-048)
+  - `SupportedBank` enum con 6 bancos: Agrícola, Cuscatlán, BAC Credomatic, Promerica, Davivienda, Credicomer
+  - Cada banco tiene `id`, `displayName` y `promotionsUrl` (para scraper futuro)
+  - Campo `bankId: String?` en `CreditCard` entity — `null` para bancos personalizados
+  - `BankPicker` composable: dropdown con 6 bancos + opción "Otro (personalizado)" con texto libre
+  - Migración DB v11→v12: `ALTER TABLE credit_cards ADD COLUMN bankId TEXT`
+  - Auto-detect en edit: carga de tarjeta legacy intenta match con `SupportedBank.fromDisplayName()`
+  - Retrocompatibilidad total: tarjetas legacy con `bankId = null` usan `bank` string original
 
 ### Changed
 - 🔧 **OCR Detection Pipeline:** Reemplazo de "first-wins" con scoring unificado — todas las capas acumulan candidatos

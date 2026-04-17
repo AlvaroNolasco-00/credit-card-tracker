@@ -26,9 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.alvaronolasco.creditcardtracker.data.entity.NotificationConfig
+import com.alvaronolasco.creditcardtracker.data.entity.SupportedBank
 import com.alvaronolasco.creditcardtracker.ui.theme.*
 import com.alvaronolasco.creditcardtracker.ui.components.*
 import com.alvaronolasco.creditcardtracker.ui.theme.Dimensions
+import com.alvaronolasco.creditcardtracker.ui.components.BankPicker
 import com.alvaronolasco.creditcardtracker.ui.components.CardColorPicker
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +43,8 @@ fun AddEditCardScreen(
     val uiState by viewModel.uiState.collectAsState()
     
     var name by remember { mutableStateOf("") }
-    var bank by remember { mutableStateOf("") }
+    var selectedBankId by remember { mutableStateOf<String?>(null) }
+    var customBankName by remember { mutableStateOf("") }
     var lastFour by remember { mutableStateOf("") }
     var creditLimit by remember { mutableStateOf("") }
     var cutOffDay by remember { mutableStateOf("1") }
@@ -60,7 +63,10 @@ fun AddEditCardScreen(
     LaunchedEffect(uiState.editingCard) {
         uiState.editingCard?.let { card ->
             name = card.name
-            bank = card.bank
+            val resolvedBank = card.bankId?.let { SupportedBank.fromId(it) }
+                ?: SupportedBank.fromDisplayName(card.bank)
+            selectedBankId = resolvedBank?.id
+            customBankName = if (resolvedBank == null) card.bank else ""
             lastFour = card.lastFourDigits
             creditLimit = card.creditLimit.toString()
             cutOffDay = card.cutOffDay.toString()
@@ -164,10 +170,10 @@ fun AddEditCardScreen(
                     label = "Nombre de la Tarjeta (Ej: Oro)"
                 )
 
-                AppTextField(
-                    value = bank,
-                    onValueChange = { bank = it },
-                    label = "Banco"
+                BankPicker(
+                    selectedBankId = selectedBankId,
+                    customBankName = customBankName,
+                    onBankSelected = { id, name -> selectedBankId = id; customBankName = if (id == null) name else "" }
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SpacingMd)) {
@@ -246,20 +252,26 @@ fun AddEditCardScreen(
 
                 Spacer(Modifier.height(Dimensions.SpacingMd))
 
+                val effectiveBankName = SupportedBank.fromId(selectedBankId)?.displayName ?: customBankName
+
                 AppButton(
                     text = if (cardId == null) "Guardar Tarjeta" else "Actualizar Tarjeta",
                     onClick = {
                         viewModel.saveCard(
-                            name, bank, lastFour, selectedCardColor.toArgb(),
-                            cutOffDay.toIntOrNull() ?: 1,
-                            paymentDay.toIntOrNull() ?: 1,
-                            creditLimit.toDoubleOrNull() ?: 0.0,
+                            name = name,
+                            bank = effectiveBankName,
+                            bankId = selectedBankId,
+                            lastFour = lastFour,
+                            color = selectedCardColor.toArgb(),
+                            cutOff = cutOffDay.toIntOrNull() ?: 1,
+                            payment = paymentDay.toIntOrNull() ?: 1,
+                            limit = creditLimit.toDoubleOrNull() ?: 0.0,
                             extraFinancingPayment = extraFinancingPayment.toDoubleOrNull() ?: 0.0,
                             existingCardId = cardId,
                             onSuccess = onBack
                         )
                     },
-                    enabled = name.isNotBlank() && bank.isNotBlank()
+                    enabled = name.isNotBlank() && effectiveBankName.isNotBlank()
                 )
             }
         }

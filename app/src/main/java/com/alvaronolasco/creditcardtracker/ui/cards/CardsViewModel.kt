@@ -46,6 +46,7 @@ class CardsViewModel @Inject constructor(
     fun saveCard(
         name: String,
         bank: String,
+        bankId: String? = null,
         lastFour: String,
         color: Int,
         cutOff: Int,
@@ -60,6 +61,7 @@ class CardsViewModel @Inject constructor(
                 id = existingCardId ?: 0,
                 name = name,
                 bank = bank,
+                bankId = bankId,
                 lastFourDigits = lastFour,
                 color = color,
                 cutOffDay = cutOff,
