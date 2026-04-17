@@ -69,6 +69,11 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 📝 Optimización de `parseAmount()`: 25 líneas → 11, uso de `ParsePosition` para garantizar parseo completo
 
 ### Fixed
+- 🐛 **Payment state reset on card edit (ADR-050):** Guardar edición en cualquier tarjeta no restablecía pagos de otras tarjetas
+  - Root cause: `CardsViewModel.saveCard()` creaba `CreditCard` nueva sin preservar `lastPaymentDate`, `partialPaymentAmount`, `partialPaymentCycleEnd`
+  - Solución: Cargar tarjeta existente del repo + usar `.copy()` para sobrescribir solo campos del formulario
+  - Efecto: Tarjetas pagadas permanecen pagadas tras editar cualquier otra tarjeta; pagos parciales se preservan
+  - **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/cards/CardsViewModel.kt` (lines 59–85)
 - 🐛 Ruido de OCR: Porcentajes (ej. "16%") y códigos postales ya no se capturan como montos válidos
 - 🐛 Robustez: Eliminados edge cases en parsing de montos con separadores inconsistentes
 - 🐛 Detección múltiple: Si hay 2+ montos bajo "TOTAL", ahora se elige el ganador por scoring (no el primero)

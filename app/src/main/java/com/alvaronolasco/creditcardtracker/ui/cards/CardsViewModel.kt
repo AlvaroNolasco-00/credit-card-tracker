@@ -57,23 +57,46 @@ class CardsViewModel @Inject constructor(
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            val card = CreditCard(
-                id = existingCardId ?: 0,
-                name = name,
-                bank = bank,
-                bankId = bankId,
-                lastFourDigits = lastFour,
-                color = color,
-                cutOffDay = cutOff,
-                paymentDueDay = payment,
-                creditLimit = limit,
-                extraFinancingPayment = extraFinancingPayment
-            )
             val savedId: Int
             if (existingCardId != null) {
+                val existing = repository.getCardById(existingCardId)
+                val card = (existing ?: CreditCard(
+                    id = existingCardId,
+                    name = name,
+                    bank = bank,
+                    bankId = bankId,
+                    lastFourDigits = lastFour,
+                    color = color,
+                    cutOffDay = cutOff,
+                    paymentDueDay = payment,
+                    creditLimit = limit,
+                    extraFinancingPayment = extraFinancingPayment
+                )).copy(
+                    name = name,
+                    bank = bank,
+                    bankId = bankId,
+                    lastFourDigits = lastFour,
+                    color = color,
+                    cutOffDay = cutOff,
+                    paymentDueDay = payment,
+                    creditLimit = limit,
+                    extraFinancingPayment = extraFinancingPayment
+                )
                 repository.updateCard(card)
                 savedId = existingCardId
             } else {
+                val card = CreditCard(
+                    id = 0,
+                    name = name,
+                    bank = bank,
+                    bankId = bankId,
+                    lastFourDigits = lastFour,
+                    color = color,
+                    cutOffDay = cutOff,
+                    paymentDueDay = payment,
+                    creditLimit = limit,
+                    extraFinancingPayment = extraFinancingPayment
+                )
                 savedId = repository.insertCard(card)
             }
             val configs = repository.getConfigsByCard(savedId).first()
