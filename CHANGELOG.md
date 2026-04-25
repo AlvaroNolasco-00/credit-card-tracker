@@ -9,6 +9,15 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 
 ## [Unreleased]
 
+### Fixed
+- ✅ OCR Amount Detector — fixes de regex, scoring y filtros para pasar 24/24 tests (ADR-052)
+  - `amountRegex`: ahora captura números de 4+ dígitos sin separador de miles (`12500.00`)
+  - `correctOcrErrors`: removida corrección `L→1` que corrompía moneda Lempira (`L300.50`)
+  - `SCORE_KEYWORD_MATCH`: subido de 40 a 50 para alcanzar `Confidence.HIGH` con bonus bottom30
+  - `SCORE_LAST_AMOUNT`: subido de 5 a 20 para alcanzar `Confidence.MEDIUM` en fallback
+  - Eliminadas penalizaciones `-5`/`-10` en candidatos cercanos a keywords
+  - `idKeywords`: agregados `tel`, `telefono`, `teléfono`, `cel`, `celular`, `fax` para filtrar números telefónicos
+
 ### Added
 - ✅ Gastos recurrentes (ADR-051)
   - Entity `RecurringExpense` con FK a `CreditCard`, campos `amount`, `description`, `dayOfMonth` (nullable), `isActive`

@@ -69,6 +69,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-049](ui/ADR-049-overdue-payment-alerts.md) | Alertas visuales y notificaciones de pago vencido — banner rojo + InfoChip + alarmas escalonadas | ui, notifications | Aceptado | 2026-04-17 |
 | [ADR-050](architecture/ADR-050-preserve-payment-state-on-card-update.md) | Preservar estado de pago al actualizar tarjeta — cargar existente + `.copy()` en `saveCard()` | architecture | Aceptado | 2026-04-17 |
 | [ADR-051](ui/ADR-051-recurring-expenses.md) | Gastos Recurrentes — Entity separada + UI + cómputo en corte de período | data, ui | Aceptado | 2026-04-24 |
+| [ADR-052](architecture/ADR-052-ocr-amount-detector-test-fixes.md) | OCR Amount Detector — Fixes de regex, scoring y filtros para pasar tests | architecture | Aceptado | 2026-04-25 |
 
 ## Regla de escritura
 

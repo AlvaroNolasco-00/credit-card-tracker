@@ -163,10 +163,10 @@ class AmountDetector {
     // ── Base scores per detection layer ──────────────────────────────────────
     private val SCORE_GEOMETRIC_ALIGN = 50  // same row as keyword (spatial)
     private val SCORE_COLUMN_ALIGNED  = 35  // multiple amounts aligned in price column
-    private val SCORE_KEYWORD_MATCH   = 40  // keyword found in plain text
+    private val SCORE_KEYWORD_MATCH   = 50  // keyword found in plain text
     private val SCORE_POSITION_BASED  = 25  // bottom 40% of image, no keyword
     private val SCORE_LAST_SECTION    = 15  // bottom 50% of text lines
-    private val SCORE_LAST_AMOUNT     =  5  // final fallback
+    private val SCORE_LAST_AMOUNT     = 20  // final fallback
 
     // ── Bonuses ──────────────────────────────────────────────────────────────
     private val BONUS_CURRENCY_SYMBOL    = 30  // regex group 1 has $, Q, USD, MXN…
@@ -215,7 +215,7 @@ class AmountDetector {
     // Fix #1: unified pattern — handles large amounts, thousands separators, 1-2 decimal places.
     // MEJORA: Regex más flexible para montos con/sin espacio y con/sin separador de miles
     private val amountRegex = Regex(
-        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d{1,3}(?:[.,\s]?\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
+        """([$€£¥₣₹]|Q|L|HNL|GTQ|USD|MXN|EUR)?\s*(\d{4,}(?:[.,]\d{1,2})?|\d{1,3}(?:[.,\s]?\d{3})*(?:[.,]\d{1,2})?)(?:\s*(?:USD|MXN|EUR|GTQ|HNL)\b)?""",
         RegexOption.IGNORE_CASE
     )
 
@@ -393,14 +393,14 @@ class AmountDetector {
                 // Lines below the keyword in the receipt (lower index in reversed list)
                 val startBelow = maxOf(0, i - 7)
                 for (j in (i - 1 downTo startBelow)) {
-                    lastScoredCandidateOnLine(reversedLines[j], SCORE_KEYWORD_MATCH - 5)
+                    lastScoredCandidateOnLine(reversedLines[j], SCORE_KEYWORD_MATCH)
                         ?.let { results.add(it) }
                 }
 
                 // Lines above the keyword (fallback)
                 val endAbove = minOf(reversedLines.size - 1, i + 4)
                 for (j in (i + 1..endAbove)) {
-                    lastScoredCandidateOnLine(reversedLines[j], SCORE_KEYWORD_MATCH - 10)
+                    lastScoredCandidateOnLine(reversedLines[j], SCORE_KEYWORD_MATCH)
                         ?.let { results.add(it) }
                 }
             }
@@ -609,7 +609,7 @@ class AmountDetector {
             }
         }
         // Fallback: search the full line (e.g. "$50.00  TOTAL")
-        return lastScoredCandidateOnLine(line, baseScore - 5)
+        return lastScoredCandidateOnLine(line, baseScore)
     }
 
     /**
@@ -665,7 +665,9 @@ class AmountDetector {
         "nit", "rfc", "ruc", "factura", "orden", "ticket", "folio",
         "autorizacion", "ref", "tarjeta", "terminal", "cajero", "aprobacion", "cuenta",
         // Postal codes (C.P., ZIP) — numbers near these labels are addresses, not amounts
-        "c.p.", "c.p", "cod. postal", "codigo postal", "zip"
+        "c.p.", "c.p", "cod. postal", "codigo postal", "zip",
+        // Phone labels — numbers near these are phone numbers, not amounts
+        "tel", "telefono", "teléfono", "cel", "celular", "fax"
     )
 
     private fun looksLikeNonMonetary(matchStr: String, contextStr: String = ""): Boolean {
@@ -750,13 +752,13 @@ class AmountDetector {
      * que forman parte de palabras (ej: la "S" de "USD", la "O" de "cobro").
      */
     private fun correctOcrErrors(text: String): String {
-        return Regex("""[0-9OoIlLSBZ]+(?:[.,][0-9OoIlLSBZ]+)*""").replace(text) { match ->
+        return Regex("""[0-9OoIlSBZ]+(?:[.,][0-9OoIlSBZ]+)*""").replace(text) { match ->
             // Guardia: solo aplicar si el token contiene al menos un dígito real.
             // Letras sueltas sin dígitos (ej: "S" en "USD") no se tocan.
             if (match.value.any { it.isDigit() }) {
                 match.value
                     .replace(Regex("""[Oo]"""), "0")   // O → 0
-                    .replace(Regex("""[lLI]"""), "1")  // l, L, I → 1
+                    .replace(Regex("""[lI]"""), "1")  // l, I → 1
                     .replace(Regex("""[S]"""), "5")     // S → 5
                     .replace(Regex("""[B]"""), "8")     // B → 8
                     .replace(Regex("""[Z]"""), "2")     // Z → 2
