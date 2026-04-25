@@ -16,6 +16,8 @@ import com.alvaronolasco.creditcardtracker.ui.income.IncomeSetupScreen
 import com.alvaronolasco.creditcardtracker.ui.income.AddEditIncomeScreen
 import com.alvaronolasco.creditcardtracker.ui.budget.BudgetScreen
 import com.alvaronolasco.creditcardtracker.ui.components.CameraPreviewScreen
+import com.alvaronolasco.creditcardtracker.ui.recurring.AddEditRecurringExpenseScreen
+import com.alvaronolasco.creditcardtracker.ui.recurring.RecurringExpensesScreen
 import com.alvaronolasco.creditcardtracker.ui.onboarding.OnboardingScreen
 import com.alvaronolasco.creditcardtracker.ui.activity.ActivityScreen
 import com.alvaronolasco.creditcardtracker.ui.support.SupportScreen
@@ -62,7 +64,8 @@ fun Navigation(startDestination: String = "dashboard") {
                 onExpenseClick = { expenseId -> navController.navigate("edit_expense/$expenseId") },
                 onSupportClick = { navController.navigate("support_developer") },
                 onActivityClick = { navController.navigate("activity") },
-                onStatsClick = { cardId -> navController.navigate("card_stats/$cardId") }
+                onStatsClick = { cardId -> navController.navigate("card_stats/$cardId") },
+                onRecurringExpensesClick = { cardId -> navController.navigate("recurring_expenses/$cardId") }
             )
         }
 
@@ -196,6 +199,42 @@ fun Navigation(startDestination: String = "dashboard") {
             val incomeId = backStackEntry.arguments?.getInt("incomeId")
             AddEditIncomeScreen(
                 incomeId = incomeId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "recurring_expenses/{cardId}",
+            arguments = listOf(navArgument("cardId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val cardId = backStackEntry.arguments?.getInt("cardId") ?: 0
+            RecurringExpensesScreen(
+                cardId = cardId,
+                onBack = { navController.popBackStack() },
+                onAddRecurring = { navController.navigate("add_recurring_expense/$cardId") },
+                onEditRecurring = { id -> navController.navigate("edit_recurring_expense/$id") }
+            )
+        }
+
+        composable(
+            route = "add_recurring_expense/{cardId}",
+            arguments = listOf(navArgument("cardId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val cardId = backStackEntry.arguments?.getInt("cardId") ?: 0
+            AddEditRecurringExpenseScreen(
+                cardId = cardId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "edit_recurring_expense/{recurringId}",
+            arguments = listOf(navArgument("recurringId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val recurringId = backStackEntry.arguments?.getInt("recurringId") ?: 0
+            AddEditRecurringExpenseScreen(
+                cardId = 0,
+                recurringExpenseId = recurringId,
                 onBack = { navController.popBackStack() }
             )
         }

@@ -10,6 +10,18 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Added
+- ✅ Gastos recurrentes (ADR-051)
+  - Entity `RecurringExpense` con FK a `CreditCard`, campos `amount`, `description`, `dayOfMonth` (nullable), `isActive`
+  - Junction table `RecurringExpenseCategory` para categorías (mismo patrón que `ExpenseCategory`)
+  - DAO `RecurringExpenseDao` con queries Flow: `getActiveByCard`, `getAllActive`
+  - Migración DB v12→v13: crea tablas `recurring_expenses` y `recurring_expense_categories` con índices
+  - Repository: `insertRecurringExpense`, `updateRecurringExpense`, `deleteRecurringExpense`, `getAllRecurringExpenses()`
+  - `RecurringExpensesScreen`: lista de gastos recurrentes por tarjeta con overview card y FAB
+  - `AddEditRecurringExpenseScreen`: formulario con toggle "¿Conoces el día de cobro?" + chips de categorías
+  - Dashboard: ícono `Repeat` en `CreditCardPagerItem` para acceso directo a gastos recurrentes
+  - `DashboardViewModel`: `recurringExpensesTotal` en `CardDashboardState`; se suma al `totalSpent` del período
+  - `DateUtils.isRecurringExpenseApplicable()`: si `dayOfMonth=null` aplica siempre al período; si tiene día, verifica si cae dentro del rango de fechas
+  - Navegación: 3 rutas nuevas (`recurring_expenses/{cardId}`, `add_recurring_expense/{cardId}`, `edit_recurring_expense/{recurringId}`)
 - ✅ Gastos no-tarjeta: débito, transferencia, efectivo, otros (ADR-047)
   - `PaymentMethod` enum (`CREDIT_CARD`, `DEBIT_CARD`, `TRANSFER`, `CASH`, `OTHER`)
   - `Expense.cardId` ahora nullable; `paymentMethod: String` nuevo campo
@@ -81,6 +93,12 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
   **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt` (líneas 994–1072)
 
 **ADRs:** 
+- [ADR-051](docs/adr/ui/ADR-051-recurring-expenses.md) — Gastos recurrentes
+- [ADR-050](docs/adr/architecture/ADR-050-preserve-payment-state-on-card-update.md) — Preservar estado de pago al actualizar tarjeta
+- [ADR-049](docs/adr/ui/ADR-049-overdue-payment-alerts.md) — Alertas visuales de pago vencido
+- [ADR-048](docs/adr/data/ADR-048-bank-catalog-and-selector.md) — Catálogo de Bancos SV
+- [ADR-047](docs/adr/data/ADR-047-non-card-expenses.md) — Gastos no-tarjeta
+- [ADR-046](docs/adr/ui/ADR-046-rich-notifications-card-thumbnail.md) — Notificaciones ricas con miniatura de tarjeta
 - [ADR-045](docs/adr/ui/ADR-045-image-crop-canvas-layered-architecture.md) — Refactorización ImageCropCanvas con arquitectura de capas
 - [ADR-041](docs/adr/ui/ADR-041-ocr-loading-state-ux.md) — OCR Loading State UX Improvement
 - [ADR-038](docs/adr/architecture/ADR-038-ocr-accuracy-improvements.md) — OCR Accuracy Improvements

@@ -107,4 +107,19 @@ object DateUtils {
         
         return periods.reversed()
     }
+
+    fun isRecurringExpenseApplicable(dayOfMonth: Int?, periodStart: Long, periodEnd: Long): Boolean {
+        if (dayOfMonth == null) return true
+        val startDate = java.time.Instant.ofEpochMilli(periodStart).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        val endDate = java.time.Instant.ofEpochMilli(periodEnd).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        val monthsToCheck = listOf(
+            java.time.YearMonth.from(startDate),
+            java.time.YearMonth.from(endDate)
+        ).distinct()
+        return monthsToCheck.any { yearMonth ->
+            val safeDay = dayOfMonth.coerceAtMost(yearMonth.lengthOfMonth())
+            val candidateDate = yearMonth.atDay(safeDay)
+            !candidateDate.isBefore(startDate) && !candidateDate.isAfter(endDate)
+        }
+    }
 }

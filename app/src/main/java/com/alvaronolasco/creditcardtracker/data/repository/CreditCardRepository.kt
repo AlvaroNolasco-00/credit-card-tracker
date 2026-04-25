@@ -13,7 +13,8 @@ class CreditCardRepository @Inject constructor(
     private val configDao: NotificationConfigDao,
     private val incomeDao: IncomeDao,
     private val budgetDao: BudgetDao,
-    private val activityLogDao: ActivityLogDao
+    private val activityLogDao: ActivityLogDao,
+    private val recurringExpenseDao: RecurringExpenseDao
 ) {
     // Cards
     fun getAllCards(): Flow<List<CreditCard>> = cardDao.getAllCards()
@@ -184,6 +185,41 @@ class CreditCardRepository @Inject constructor(
         )
     }
     fun getSpendingPerCategory(startDate: Long, endDate: Long): Flow<List<CategorySpending>> = expenseDao.getSpendingPerCategory(startDate, endDate)
+
+    // Recurring Expenses
+    fun getRecurringExpensesByCard(cardId: Int): Flow<List<RecurringExpenseWithCategories>> =
+        recurringExpenseDao.getActiveByCard(cardId)
+
+    fun getAllRecurringExpenses(): Flow<List<RecurringExpense>> =
+        recurringExpenseDao.getAllActive()
+
+    suspend fun getRecurringExpenseWithCategoriesById(id: Int): RecurringExpenseWithCategories? =
+        recurringExpenseDao.getWithCategoriesById(id)
+
+    suspend fun insertRecurringExpense(expense: RecurringExpense, categoryIds: List<Int>): Int {
+        val id = recurringExpenseDao.insert(expense).toInt()
+        categoryIds.forEach { recurringExpenseDao.insertCategory(RecurringExpenseCategory(id, it)) }
+        activityLogDao.insertLog(
+            ActivityLog(category = "RECURRING_EXPENSE", action = "CREATED", description = "Gasto recurrente '${expense.description}' por \$${String.format("%.2f", expense.amount)} agregado", entityId = id, entityType = "RECURRING_EXPENSE")
+        )
+        return id
+    }
+
+    suspend fun updateRecurringExpense(expense: RecurringExpense, categoryIds: List<Int>) {
+        recurringExpenseDao.update(expense)
+        recurringExpenseDao.deleteCategories(expense.id)
+        categoryIds.forEach { recurringExpenseDao.insertCategory(RecurringExpenseCategory(expense.id, it)) }
+        activityLogDao.insertLog(
+            ActivityLog(category = "RECURRING_EXPENSE", action = "UPDATED", description = "Gasto recurrente '${expense.description}' actualizado", entityId = expense.id, entityType = "RECURRING_EXPENSE")
+        )
+    }
+
+    suspend fun deleteRecurringExpense(expense: RecurringExpense) {
+        recurringExpenseDao.delete(expense)
+        activityLogDao.insertLog(
+            ActivityLog(category = "RECURRING_EXPENSE", action = "DELETED", description = "Gasto recurrente '${expense.description}' eliminado", entityId = expense.id, entityType = "RECURRING_EXPENSE")
+        )
+    }
 
     // Activity Logs
     fun getAllActivityLogs(): Flow<List<ActivityLog>> = activityLogDao.getAllLogs()

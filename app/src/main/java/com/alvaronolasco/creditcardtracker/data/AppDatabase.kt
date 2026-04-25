@@ -20,9 +20,11 @@ import kotlinx.coroutines.launch
         IncomeProfile::class,
         IncomeEntry::class,
         BudgetItem::class,
-        ActivityLog::class
+        ActivityLog::class,
+        RecurringExpense::class,
+        RecurringExpenseCategory::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,8 +36,38 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun incomeDao(): IncomeDao
     abstract fun budgetDao(): BudgetDao
     abstract fun activityLogDao(): ActivityLogDao
+    abstract fun recurringExpenseDao(): RecurringExpenseDao
 
     companion object {
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recurring_expenses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        cardId INTEGER NOT NULL,
+                        amount REAL NOT NULL,
+                        description TEXT NOT NULL,
+                        dayOfMonth INTEGER,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(cardId) REFERENCES credit_cards(id) ON DELETE SET NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recurring_expense_categories (
+                        recurringExpenseId INTEGER NOT NULL,
+                        categoryId INTEGER NOT NULL,
+                        PRIMARY KEY(recurringExpenseId, categoryId),
+                        FOREIGN KEY(recurringExpenseId) REFERENCES recurring_expenses(id) ON DELETE CASCADE,
+                        FOREIGN KEY(categoryId) REFERENCES categories(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_recurring_expenses_cardId ON recurring_expenses(cardId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_rec_categories_expenseId ON recurring_expense_categories(recurringExpenseId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_rec_categories_categoryId ON recurring_expense_categories(categoryId)")
+            }
+        }
+
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE credit_cards ADD COLUMN bankId TEXT")
@@ -168,7 +200,7 @@ abstract class AppDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

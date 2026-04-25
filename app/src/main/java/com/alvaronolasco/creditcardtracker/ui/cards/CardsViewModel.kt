@@ -58,9 +58,10 @@ class CardsViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             val savedId: Int
+            val card: CreditCard
             if (existingCardId != null) {
                 val existing = repository.getCardById(existingCardId)
-                val card = (existing ?: CreditCard(
+                card = (existing ?: CreditCard(
                     id = existingCardId,
                     name = name,
                     bank = bank,
@@ -85,7 +86,7 @@ class CardsViewModel @Inject constructor(
                 repository.updateCard(card)
                 savedId = existingCardId
             } else {
-                val card = CreditCard(
+                card = CreditCard(
                     id = 0,
                     name = name,
                     bank = bank,

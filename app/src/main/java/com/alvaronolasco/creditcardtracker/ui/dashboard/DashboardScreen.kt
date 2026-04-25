@@ -57,6 +57,7 @@ fun DashboardScreen(
     onSupportClick: () -> Unit,
     onActivityClick: () -> Unit,
     onStatsClick: (Int) -> Unit,
+    onRecurringExpensesClick: (Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -221,7 +222,8 @@ fun DashboardScreen(
                                     CreditCardPagerItem(
                                         state = uiState.cards[page],
                                         onClick = { onCardClick(uiState.cards[page].card.id) },
-                                        onStatsClick = { onStatsClick(uiState.cards[page].card.id) }
+                                        onStatsClick = { onStatsClick(uiState.cards[page].card.id) },
+                                        onRecurringExpensesClick = { onRecurringExpensesClick(uiState.cards[page].card.id) }
                                     )
                                 } else {
                                     AddCardTile(onClick = onAddCard)
@@ -395,7 +397,8 @@ fun DashboardScreen(
 fun CreditCardPagerItem(
     state: CardDashboardState,
     onClick: () -> Unit,
-    onStatsClick: () -> Unit
+    onStatsClick: () -> Unit,
+    onRecurringExpensesClick: () -> Unit
 ) {
     val totalDue = if (state.cutOffHappenedThisMonth)
         state.cutPeriodTotal + state.totalSpent + state.extraFinancingPayment
@@ -573,6 +576,22 @@ fun CreditCardPagerItem(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .clickable { onRecurringExpensesClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Repeat,
+                            contentDescription = "Gastos recurrentes",
+                            tint = Color(state.card.color),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
                     Box(

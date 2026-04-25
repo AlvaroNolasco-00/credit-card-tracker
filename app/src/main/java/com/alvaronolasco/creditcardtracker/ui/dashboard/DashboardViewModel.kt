@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
+import com.alvaronolasco.creditcardtracker.data.entity.RecurringExpense
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
 import com.alvaronolasco.creditcardtracker.data.repository.UserPreferencesRepository
 import com.alvaronolasco.creditcardtracker.notifications.ReminderScheduler
@@ -30,7 +31,8 @@ data class CardDashboardState(
     val cutOffDateLabel: String = "",
     val hasStatsAvailable: Boolean = false,
     val isPaymentOverdue: Boolean = false,
-    val daysOverdue: Int = 0
+    val daysOverdue: Int = 0,
+    val recurringExpensesTotal: Double = 0.0
 )
 
 data class DashboardUiState(
@@ -169,7 +171,8 @@ class DashboardViewModel @Inject constructor(
                                 cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
                                 hasStatsAvailable = checkStatsAvailability(card),
                                 isPaymentOverdue = overduedays > 0,
-                                daysOverdue = overduedays
+                                daysOverdue = overduedays,
+                                recurringExpensesTotal = 0.0
                             )
                         }
                     } else {
@@ -183,7 +186,8 @@ class DashboardViewModel @Inject constructor(
                                 daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
                                 daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
                                 cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
-                                hasStatsAvailable = checkStatsAvailability(card)
+                                hasStatsAvailable = checkStatsAvailability(card),
+                                recurringExpensesTotal = 0.0
                             )
                         }
                     }
@@ -191,8 +195,22 @@ class DashboardViewModel @Inject constructor(
             },
             repository.getIncomeProfile(),
             repository.getIncomeEntriesForMonth(currentMonthYear),
-            repository.getTotalIncomeForMonth(currentMonthYear)
-        ) { cardStates, profile, entries, totalIncome ->
+            repository.getTotalIncomeForMonth(currentMonthYear),
+            repository.getAllRecurringExpenses()
+        ) { cardStates, profile, entries, totalIncome, recurringExpenses ->
+            val adjustedCardStates = cardStates.map { state ->
+                val (periodStart, periodEnd) = if (state.cutOffHappenedThisMonth) {
+                    DateUtils.getPreviousPeriodRange(state.card.cutOffDay)
+                } else {
+                    DateUtils.getCurrentPeriodRange(state.card.cutOffDay)
+                }
+                val recurringTotal = recurringExpenses
+                    .filter { it.cardId == state.card.id }
+                    .filter { DateUtils.isRecurringExpenseApplicable(it.dayOfMonth, periodStart, periodEnd) }
+                    .sumOf { it.amount }
+                state.copy(recurringExpensesTotal = recurringTotal)
+            }
+
             val hasProfile = profile != null
             val isPromptDismissed = _uiState.value.promptDismissedMonth == currentMonthYear
 
@@ -205,14 +223,15 @@ class DashboardViewModel @Inject constructor(
                 showManualPrompt = profile?.incomeMode == "MONTHLY_PROMPT" && entries.none { it.monthYear == currentMonthYear }
             }
 
-            val totalAllCards = cardStates.sumOf {
-                if (it.cutOffHappenedThisMonth) it.cutPeriodTotal + it.totalSpent + it.extraFinancingPayment
+            val totalAllCards = adjustedCardStates.sumOf {
+                val baseTotal = if (it.cutOffHappenedThisMonth) it.cutPeriodTotal + it.totalSpent + it.extraFinancingPayment
                 else it.totalSpent + it.extraFinancingPayment
+                baseTotal + it.recurringExpensesTotal
             }
 
             _uiState.update {
                 it.copy(
-                    cards = cardStates,
+                    cards = adjustedCardStates,
                     totalMonthlyIncome = totalIncome ?: 0.0,
                     totalAllCardsSpent = totalAllCards,
                     hasIncomeProfile = hasProfile,
