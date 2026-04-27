@@ -151,45 +151,28 @@ class DashboardViewModel @Inject constructor(
                     val (start, end) = DateUtils.getCurrentPeriodRange(card.cutOffDay)
                     val cutHappened = DateUtils.hasCutOffPassedThisMonth(card.cutOffDay)
                     val currentFlow = repository.getTotalSpentInPeriod(card.id, start, end)
-                    if (cutHappened) {
-                        val (prevStart, prevEnd) = DateUtils.getPreviousPeriodRange(card.cutOffDay)
-                        val isPaid = card.lastPaymentDate > prevEnd
-                        val effectivePartial = if (!isPaid && card.partialPaymentCycleEnd == prevEnd) card.partialPaymentAmount else 0.0
-                        val prevFlow = repository.getTotalSpentInPeriod(card.id, prevStart, prevEnd)
-                        combine(currentFlow, prevFlow) { current, prev ->
-                            val overduedays = if (!isPaid) DateUtils.getDaysOverduePayment(card.cutOffDay, card.paymentDueDay) else 0
-                            CardDashboardState(
-                                card = card,
-                                totalSpent = current ?: 0.0,
-                                cutPeriodTotal = if (isPaid) 0.0 else (prev ?: 0.0),
-                                cutOffHappenedThisMonth = true,
-                                isPaidThisCycle = isPaid,
-                                extraFinancingPayment = card.extraFinancingPayment,
-                                partiallyPaidAmount = effectivePartial,
-                                daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
-                                daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
-                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
-                                hasStatsAvailable = checkStatsAvailability(card),
-                                isPaymentOverdue = overduedays > 0,
-                                daysOverdue = overduedays,
-                                recurringExpensesTotal = 0.0
-                            )
-                        }
-                    } else {
-                        currentFlow.map { total ->
-                            CardDashboardState(
-                                card = card,
-                                totalSpent = total ?: 0.0,
-                                cutPeriodTotal = 0.0,
-                                cutOffHappenedThisMonth = false,
-                                extraFinancingPayment = card.extraFinancingPayment,
-                                daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
-                                daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
-                                cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
-                                hasStatsAvailable = checkStatsAvailability(card),
-                                recurringExpensesTotal = 0.0
-                            )
-                        }
+                    val (prevStart, prevEnd) = DateUtils.getPreviousPeriodRange(card.cutOffDay)
+                    val isPaid = card.lastPaymentDate > prevEnd
+                    val effectivePartial = if (!isPaid && card.partialPaymentCycleEnd == prevEnd) card.partialPaymentAmount else 0.0
+                    val prevFlow = repository.getTotalSpentInPeriod(card.id, prevStart, prevEnd)
+                    combine(currentFlow, prevFlow) { current, prev ->
+                        val overduedays = if (!isPaid) DateUtils.getDaysOverduePayment(card.cutOffDay, card.paymentDueDay) else 0
+                        CardDashboardState(
+                            card = card,
+                            totalSpent = current ?: 0.0,
+                            cutPeriodTotal = if (isPaid) 0.0 else (prev ?: 0.0),
+                            cutOffHappenedThisMonth = cutHappened,
+                            isPaidThisCycle = isPaid,
+                            extraFinancingPayment = card.extraFinancingPayment,
+                            partiallyPaidAmount = effectivePartial,
+                            daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
+                            daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
+                            cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
+                            hasStatsAvailable = checkStatsAvailability(card),
+                            isPaymentOverdue = overduedays > 0,
+                            daysOverdue = overduedays,
+                            recurringExpensesTotal = 0.0
+                        )
                     }
                 }) { it.toList() }
             },
@@ -258,11 +241,11 @@ class DashboardViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    fun payBalance(card: CreditCard) {
+    fun payBalance(card: CreditCard, paymentDate: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
             repository.updateCard(
                 card.copy(
-                    lastPaymentDate = System.currentTimeMillis(),
+                    lastPaymentDate = paymentDate,
                     partialPaymentAmount = 0.0,
                     partialPaymentCycleEnd = 0L
                 )
@@ -272,14 +255,14 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun payPartial(state: CardDashboardState, amount: Double) {
+    fun payPartial(state: CardDashboardState, amount: Double, paymentDate: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
             val totalDue = state.cutPeriodTotal + state.extraFinancingPayment
             val newPaid = state.partiallyPaidAmount + amount
             if (newPaid >= totalDue) {
                 repository.updateCard(
                     state.card.copy(
-                        lastPaymentDate = System.currentTimeMillis(),
+                        lastPaymentDate = paymentDate,
                         partialPaymentAmount = 0.0,
                         partialPaymentCycleEnd = 0L
                     )

@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import com.alvaronolasco.creditcardtracker.ui.components.AppLoadingIndicator
 import com.alvaronolasco.creditcardtracker.ui.components.EmptyStateView
@@ -284,16 +287,15 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Pay balance button (only when cut period has unpaid balance)
+                    // Pay balance button (when there is an unpaid balance from a closed cycle, or payment is overdue)
                     if (selectedCard != null &&
-                        selectedCard.cutOffHappenedThisMonth &&
                         !selectedCard.isPaidThisCycle &&
-                        (selectedCard.cutPeriodTotal + selectedCard.extraFinancingPayment - selectedCard.partiallyPaidAmount) > 0.0
+                        (selectedCard.cutPeriodTotal + selectedCard.extraFinancingPayment - selectedCard.partiallyPaidAmount) >= 0.0
                     ) {
                         item {
                             PayBalanceCard(
                                 state = selectedCard,
-                                onConfirmPay = { amount -> viewModel.payPartial(selectedCard, amount) },
+                                onConfirmPay = { amount, paymentDate -> viewModel.payPartial(selectedCard, amount, paymentDate) },
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -724,20 +726,73 @@ fun CardInfoRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayBalanceCard(
     state: CardDashboardState,
-    onConfirmPay: (Double) -> Unit,
+    onConfirmPay: (Double, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val totalDue = state.cutPeriodTotal + state.extraFinancingPayment
     val remaining = (totalDue - state.partiallyPaidAmount).coerceAtLeast(0.0)
 
     if (showDialog) {
         var amountText by remember(remaining) { mutableStateOf(String.format("%.2f", remaining)) }
+        var selectedPaymentDate by remember { mutableStateOf(System.currentTimeMillis()) }
         val amountValue = amountText.replace(",", ".").toDoubleOrNull() ?: 0.0
-        val isValid = amountValue > 0.0 && amountValue <= remaining
+        val isValid = if (remaining > 0.0) {
+            amountValue > 0.0 && amountValue <= remaining
+        } else {
+            amountValue >= 0.0
+        }
+        val dateFormatter = remember {
+            java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale("es", "SV"))
+        }
+
+        if (showDatePicker) {
+            val today = LocalDate.now()
+            val zoneId = ZoneId.systemDefault()
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = selectedPaymentDate,
+                selectableDates = object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        val localDate = Instant.ofEpochMilli(utcTimeMillis)
+                            .atZone(zoneId)
+                            .toLocalDate()
+                        return !localDate.isAfter(today)
+                    }
+                    override fun isSelectableYear(year: Int): Boolean {
+                        return year <= today.year
+                    }
+                }
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { selectedPaymentDate = it }
+                            showDatePicker = false
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) { Text("Aceptar") }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showDatePicker = false },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) { Text("Cancelar") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -789,13 +844,22 @@ fun PayBalanceCard(
                         isError = amountText.isNotEmpty() && !isValid,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Fecha del pago: ${dateFormatter.format(java.util.Date(selectedPaymentDate))}")
+                    }
                 }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDialog = false
-                        onConfirmPay(amountValue.coerceAtMost(remaining))
+                        onConfirmPay(amountValue.coerceAtMost(remaining), selectedPaymentDate)
                     },
                     enabled = isValid
                 ) {
