@@ -8,6 +8,7 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.net.Uri
+import android.util.Log
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -25,6 +26,10 @@ enum class Confidence {
 class OcrProcessor(private val context: Context) : Closeable {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
+    companion object {
+        private const val TAG = "OcrProcessor"
+    }
+
     override fun close() {
         recognizer.close()
     }
@@ -40,40 +45,84 @@ class OcrProcessor(private val context: Context) : Closeable {
             val raw = context.contentResolver.openInputStream(uri)?.use {
                 BitmapFactory.decodeStream(it)
             } ?: return OcrResult("", null, Confidence.NONE)
-            val processed = preprocessBitmapForOcr(raw)
-            if (processed !== raw) raw.recycle()
-            val image = InputImage.fromBitmap(processed, 0)
-            val visionText = recognizer.process(image).await()
-            processed.recycle()
-            val fullText = visionText.text
-            val detector = AmountDetector()
-            val detection = detector.detect(visionText)
-            OcrResult(fullText, detection.amount, detection.confidence)
+            Log.d(TAG, "processImage: raw bitmap ${raw.width}x${raw.height}")
+            val result = runRecognition(raw, useFilter = true, logTag = "processImage")
+            val finalResult = if (result.confidence == Confidence.NONE || result.confidence == Confidence.LOW) {
+                Log.d(TAG, "processImage: low confidence, retry without preprocessing filter")
+                val retry = runRecognition(raw, useFilter = false, logTag = "processImage-retry")
+                if (retry.detectedAmount != null && (result.detectedAmount == null ||
+                        confidenceRank(retry.confidence) > confidenceRank(result.confidence))) retry else result
+            } else result
+            raw.recycle()
+            finalResult
         } catch (e: Exception) {
+            Log.e(TAG, "processImage: error", e)
             OcrResult("", null, Confidence.NONE)
         }
     }
 
     suspend fun processImageBitmap(bitmap: Bitmap): OcrResult {
         return try {
-            val processed = preprocessBitmapForOcr(bitmap)
-            val image = InputImage.fromBitmap(processed, 0)
-            val visionText = recognizer.process(image).await()
-            if (processed !== bitmap) processed.recycle()
-            val fullText = visionText.text
-            val detector = AmountDetector()
-            val detection = detector.detect(visionText)
-            OcrResult(fullText, detection.amount, detection.confidence)
+            Log.d(TAG, "processImageBitmap: input bitmap ${bitmap.width}x${bitmap.height}")
+            val result = runRecognition(bitmap, useFilter = true, logTag = "processImageBitmap")
+            if (result.confidence == Confidence.NONE || result.confidence == Confidence.LOW) {
+                Log.d(TAG, "processImageBitmap: low confidence, retry without preprocessing filter")
+                val retry = runRecognition(bitmap, useFilter = false, logTag = "processImageBitmap-retry")
+                if (retry.detectedAmount != null && (result.detectedAmount == null ||
+                        confidenceRank(retry.confidence) > confidenceRank(result.confidence))) {
+                    return retry
+                }
+            }
+            result
         } catch (e: Exception) {
+            Log.e(TAG, "processImageBitmap: error", e)
             OcrResult("", null, Confidence.NONE)
         }
+    }
+
+    private fun confidenceRank(c: Confidence) = when (c) {
+        Confidence.VERIFIED -> 4
+        Confidence.HIGH     -> 3
+        Confidence.MEDIUM   -> 2
+        Confidence.LOW      -> 1
+        Confidence.NONE     -> 0
+    }
+
+    private suspend fun runRecognition(bitmap: Bitmap, useFilter: Boolean, logTag: String): OcrResult {
+        val processed = if (useFilter) preprocessBitmapForOcr(bitmap) else {
+            // Only apply size normalization (resize), skip color-matrix filter
+            val maxDim = 2048; val minDim = 512
+            val src = bitmap
+            when {
+                src.width > maxDim || src.height > maxDim -> {
+                    val scale = maxDim.toFloat() / maxOf(src.width, src.height)
+                    Bitmap.createScaledBitmap(src, (src.width * scale).toInt(), (src.height * scale).toInt(), true)
+                }
+                src.width < minDim || src.height < minDim -> {
+                    val scale = minDim.toFloat() / maxOf(src.width, src.height)
+                    Bitmap.createScaledBitmap(src, (src.width * scale).toInt(), (src.height * scale).toInt(), true)
+                }
+                else -> src
+            }
+        }
+        val image = InputImage.fromBitmap(processed, 0)
+        val visionText = recognizer.process(image).await()
+        if (processed !== bitmap) processed.recycle()
+        val fullText = visionText.text
+        Log.d(TAG, "$logTag: ML Kit text length=${fullText.length}")
+        Log.d(TAG, "$logTag: ML Kit text=\n$fullText")
+        val detector = AmountDetector()
+        val detection = detector.detect(visionText)
+        Log.d(TAG, "$logTag: detected amount=${detection.amount}, confidence=${detection.confidence}")
+        return OcrResult(fullText, detection.amount, detection.confidence)
     }
 
     /**
      * Preprocesa el bitmap antes de entregárselo a ML Kit:
      * 1. Escala hacia abajo imágenes muy grandes (ML Kit no necesita más de 2048 px).
-     * 2. Detecta si la imagen es predominantemente oscura (dark mode).
-     * 3. Convierte a escala de grises con contraste adaptativo:
+     * 2. Escala hacia arriba imágenes muy pequeñas (ML Kit necesita texto de ~18-20px mínimo).
+     * 3. Detecta si la imagen es predominantemente oscura (dark mode).
+     * 4. Convierte a escala de grises con contraste adaptativo:
      *    - Fondo claro (light mode): brightness negativo para separar texto negro del fondo.
      *    - Fondo oscuro (dark mode): invierte los pesos de luminancia y brightness positivo
      *      para convertir texto blanco en negro y fondo negro en blanco, optimizando
@@ -82,10 +131,25 @@ class OcrProcessor(private val context: Context) : Closeable {
      * No usa OpenCV; todo es API nativa de Android (ColorMatrix + Canvas).
      */
     private fun preprocessBitmapForOcr(src: Bitmap): Bitmap {
-        // 1. Escalar si el lado mayor supera los 2048 px
+        Log.d(TAG, "Input bitmap: ${src.width}x${src.height}")
+
+        // 1. Escalar si el lado mayor supera los 2048 px O es menor a 512 px.
+        // ML Kit necesita texto de ~18-20px de alto mínimo. Si el bitmap es muy pequeño,
+        // el texto puede ser ilegible. Upscaling a 512px asegura resolución suficiente.
         val maxDim = 2048
+        val minDim = 512
         val scaled = if (src.width > maxDim || src.height > maxDim) {
             val scale = maxDim.toFloat() / maxOf(src.width, src.height)
+            Log.d(TAG, "Downscaling: ${src.width}x${src.height} -> ${(src.width * scale).toInt()}x${(src.height * scale).toInt()}")
+            Bitmap.createScaledBitmap(
+                src,
+                (src.width * scale).toInt(),
+                (src.height * scale).toInt(),
+                true
+            )
+        } else if (src.width < minDim || src.height < minDim) {
+            val scale = minDim.toFloat() / maxOf(src.width, src.height)
+            Log.d(TAG, "Upscaling: ${src.width}x${src.height} -> ${(src.width * scale).toInt()}x${(src.height * scale).toInt()}")
             Bitmap.createScaledBitmap(
                 src,
                 (src.width * scale).toInt(),
@@ -98,6 +162,7 @@ class OcrProcessor(private val context: Context) : Closeable {
 
         // 2. Detectar modo oscuro: brillo medio < 128 indica fondo oscuro con texto claro.
         val isDarkMode = calculateAverageBrightness(scaled) < 128f
+        Log.d(TAG, "Dark mode detected: $isDarkMode (brightness=${calculateAverageBrightness(scaled)})")
 
         // 3. Escala de grises + contraste adaptativo en un único paso mediante ColorMatrix.
         //
@@ -105,9 +170,20 @@ class OcrProcessor(private val context: Context) : Closeable {
         // fondo negro quede blanco y el texto blanco quede negro antes de entrar al OCR.
         // brightness positivo en dark mode empuja los grises claros (texto) hacia blanco
         // puro; negativo en light mode oscurece los grises sucios del fondo.
-        val contrast = 1.8f
-        val brightness = if (isDarkMode) 80f else -60f
+        //
+        // Para imágenes pequeñas (< 1000px), usamos valores más conservadores para evitar
+        // que el contraste agresivo destruya los bordes anti-aliased del texto.
+        val isSmallImage = scaled.width < 1000 || scaled.height < 1000
+        val contrast = if (isSmallImage) 1.4f else 1.8f
+        // Light-mode: brighten white BG, darken dark text. Dark-mode: invert polarity.
+        // brightness for dark-mode must account for the full inversion range (255 * contrast)
+        // so that dark bg → white and light text → black. Old value (~80) collapsed everything
+        // to black because -1.8 * 200 + 80 = -280 (clamped 0). Fix: use 255*contrast + lightOffset.
+        val lightBrightness = if (isSmallImage) -40f else -60f
+        val brightness = if (isDarkMode) 255f * contrast + lightBrightness else lightBrightness
         val sign = if (isDarkMode) -1f else 1f
+
+        Log.d(TAG, "Preprocessing: contrast=$contrast, brightness=$brightness, sign=$sign")
 
         val matrix = ColorMatrix(floatArrayOf(
             sign * 0.299f * contrast, sign * 0.587f * contrast, sign * 0.114f * contrast, 0f, brightness,
@@ -124,29 +200,32 @@ class OcrProcessor(private val context: Context) : Closeable {
         canvas.drawBitmap(scaled, 0f, 0f, paint)
 
         if (scaled !== src) scaled.recycle()
+        Log.d(TAG, "Output bitmap: ${result.width}x${result.height}")
         return result
     }
 
     /**
-     * Estima el brillo medio de [bitmap] mediante muestreo (≈ 2 500 píxeles).
+     * Estima el brillo mediano de [bitmap] mediante muestreo (≈ 2 500 píxeles).
+     * Usa la mediana en lugar de la media para que regiones brillantes pequeñas
+     * (ej. logo blanco en header de receipt oscuro) no sesquen la detección de modo oscuro.
      * Usa paso dinámico para mantener el coste en O(√píxeles) sin importar resolución.
      * Retorna un valor de luminancia en [0, 255]: < 128 → imagen predominantemente oscura.
      */
     private fun calculateAverageBrightness(bitmap: Bitmap): Float {
         val step = maxOf(1, maxOf(bitmap.width, bitmap.height) / 50)
-        var total = 0.0
-        var count = 0
+        val samples = mutableListOf<Float>()
         for (x in 0 until bitmap.width step step) {
             for (y in 0 until bitmap.height step step) {
                 val pixel = bitmap.getPixel(x, y)
                 val r = (pixel shr 16) and 0xFF
                 val g = (pixel shr 8) and 0xFF
                 val b = pixel and 0xFF
-                total += 0.299 * r + 0.587 * g + 0.114 * b
-                count++
+                samples.add((0.299 * r + 0.587 * g + 0.114 * b).toFloat())
             }
         }
-        return if (count > 0) (total / count).toFloat() else 128f
+        if (samples.isEmpty()) return 128f
+        samples.sort()
+        return samples[samples.size / 2]
     }
 }
 
@@ -167,6 +246,7 @@ class AmountDetector {
     private val SCORE_POSITION_BASED  = 25  // bottom 40% of image, no keyword
     private val SCORE_LAST_SECTION    = 15  // bottom 50% of text lines
     private val SCORE_LAST_AMOUNT     = 20  // final fallback
+    private val SCORE_CURRENCY_NEAR_KEYWORD = 60  // amount with currency symbol near a keyword
 
     // ── Bonuses ──────────────────────────────────────────────────────────────
     private val BONUS_CURRENCY_SYMBOL    = 30  // regex group 1 has $, Q, USD, MXN…
@@ -229,6 +309,12 @@ class AmountDetector {
         Regex("""\d{1,2}[-/]\d{1,2}[-/]\d{2,4}"""),
     )
 
+    // Card number patterns: masked (**** 4399) and full (1234-5678-9012-3456)
+    private val cardNumberPatterns = listOf(
+        Regex("""\d{4}[\s*-]*\d{4}[\s*-]*\d{4}[\s*-]*\d{4}"""),
+        Regex("""\*{4}[\s*]*\d{4}"""),
+    )
+
     // Pattern para detectar cantidades de ítems (ej: "2 x $25", "3 pz $15")
     private val quantityPattern = Regex(
         """\d{1,3}\s*(?:x|un|pz|uds|qty|cant|cantidad)\s*[$€£¥Q]""",
@@ -279,6 +365,7 @@ class AmountDetector {
         allCandidates += findByKeywordsScored(fullText)
         allCandidates += findByGeometricAlignmentScored(visionText)
         allCandidates += findColumnAlignedAmountsScored(visionText)
+        allCandidates += findAmountsWithCurrencyNearKeywordsScored(fullText)
         allCandidates += findByPositionScored(visionText)
         allCandidates += findAmountInLastSectionScored(fullText)
         allCandidates += findLastAmountScored(fullText)
@@ -306,6 +393,7 @@ class AmountDetector {
     fun detectFromText(text: String): DetectionResult {
         val allCandidates = mutableListOf<ScoredCandidate>()
         allCandidates += findByKeywordsScored(text)
+        allCandidates += findAmountsWithCurrencyNearKeywordsScored(text)
         allCandidates += findAmountInLastSectionScored(text)
         allCandidates += findLastAmountScored(text)
 
@@ -373,6 +461,18 @@ class AmountDetector {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
+     * Normaliza texto para búsqueda de keywords aplicando correcciones OCR inversas.
+     * 0→O, 1→l, 5→S. Esto compensa errores de OCR donde letras redondeadas se
+     * confunden con dígitos (ej: "M0nt0" → "MontO" → match con "monto").
+     */
+    private fun normalizeForKeywords(text: String): String {
+        return text
+            .replace("0", "O", ignoreCase = true)
+            .replace("1", "l", ignoreCase = true)
+            .replace("5", "S", ignoreCase = true)
+    }
+
+    /**
      * Layer 1: keyword search in plain text.
      * Collects ALL keyword matches (no early return) so the scorer can pick the best.
      * Currency symbol in the match grants +BONUS_CURRENCY_SYMBOL.
@@ -383,7 +483,7 @@ class AmountDetector {
 
         for (keyword in totalKeywords) {
             for ((i, line) in reversedLines.withIndex()) {
-                if (!line.contains(keyword, ignoreCase = true)) continue
+                if (!normalizeForKeywords(line).contains(keyword, ignoreCase = true)) continue
                 if (ignoreWords.any { line.contains(it, ignoreCase = true) }) continue
 
                 // Same line (prefer amount after the keyword)
@@ -422,7 +522,7 @@ class AmountDetector {
 
         for (keyword in totalKeywords) {
             for (keywordLine in allLines) {
-                val lineLower = keywordLine.text.lowercase()
+                val lineLower = normalizeForKeywords(keywordLine.text).lowercase()
                 if (!lineLower.contains(keyword)) continue
                 if (ignoreWords.any { lineLower.contains(it) }) continue
 
@@ -516,6 +616,38 @@ class AmountDetector {
             results.add(ScoredCandidate(amount, score))
         }
 
+        return results
+    }
+
+    /**
+     * Layer 2.8: amounts with explicit currency symbol near a total keyword.
+     * If a line contains a currency AND is within 2 lines of a keyword, boost score.
+     * This catches cases where keyword and amount are in adjacent lines (common in
+     * digital receipts with dark backgrounds where ML Kit may split them).
+     */
+    private fun findAmountsWithCurrencyNearKeywordsScored(text: String): List<ScoredCandidate> {
+        val lines = text.split("\n")
+        val results = mutableListOf<ScoredCandidate>()
+
+        val keywordLineIndices = lines.mapIndexedNotNull { idx, line ->
+            if (normalizeForKeywords(line).let { normalized ->
+                totalKeywords.any { normalized.contains(it, ignoreCase = true) }
+            }) idx else null
+        }
+
+        lines.forEachIndexed { idx, line ->
+            val matches = findAmountsInLine(line)
+                .filter { !looksLikeNonMonetary(it.value, line) }
+                .filter { it.groupValues[1].isNotBlank() } // MUST have currency symbol
+
+            if (matches.any() && keywordLineIndices.any { kotlin.math.abs(it - idx) <= 2 }) {
+                matches.lastOrNull()?.let { match ->
+                    parseAmount(match.groupValues[2])?.let { amount ->
+                        results.add(ScoredCandidate(amount, SCORE_CURRENCY_NEAR_KEYWORD))
+                    }
+                }
+            }
+        }
         return results
     }
 
@@ -672,7 +804,8 @@ class AmountDetector {
 
     private fun looksLikeNonMonetary(matchStr: String, contextStr: String = ""): Boolean {
         if (phonePatterns.any { it.containsMatchIn(matchStr) }) return true
-        if (datePatterns.any { it.containsMatchIn(matchStr) }) return true
+        if (contextStr.isNotBlank() && datePatterns.any { it.containsMatchIn(contextStr) }) return true
+        if (contextStr.isNotBlank() && cardNumberPatterns.any { it.containsMatchIn(contextStr) }) return true
 
         // Fix #2: replaced dynamic Regex(Pattern.quote(...)) with plain string search.
         // Exclude values used as percentage rates (e.g. "16%", "12.5% IVA")

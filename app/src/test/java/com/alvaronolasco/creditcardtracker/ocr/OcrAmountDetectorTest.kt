@@ -205,4 +205,63 @@ class OcrAmountDetectorTest {
         val result = AmountDetector().detectFromText(text)
         assertEquals(315.00, result.amount!!, 0.001)
     }
+
+    // ──────────────────────────────────────────────
+    // ADR-055 — Receipt edge-case fixes
+    // ──────────────────────────────────────────────
+
+    // Fix 1: date filtering on contextStr
+    @Test
+    fun `test date component numbers are filtered when in date context`() {
+        val text = "Fecha: 25/04/2026\nMonto\n\$ 25.00"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(25.00, result.amount!!, 0.001)
+        assertEquals(Confidence.HIGH, result.confidence)
+    }
+
+    @Test
+    fun `test year in date line is not a valid amount`() {
+        val text = "Date: 2024-03-16\nTotal: 75.20"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(75.20, result.amount!!, 0.001)
+    }
+
+    // Fix 2: card number pattern detection
+    @Test
+    fun `test card number is not detected as amount`() {
+        val text = "Número de tarjeta\n**** **** **** 4399\nMonto\n\$ 25.00"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(25.00, result.amount!!, 0.001)
+    }
+
+    @Test
+    fun `test masked card number on same line is filtered`() {
+        val text = "Tarjeta **** 4399\nTotal: 100.00"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(100.00, result.amount!!, 0.001)
+    }
+
+    // Fix 3: OCR normalization for keywords
+    @Test
+    fun `test keyword with OCR error O-zero is still detected`() {
+        val text = "M0nto\n\$ 25.00"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(25.00, result.amount!!, 0.001)
+    }
+
+    // Fix 4: currency proximity boost
+    @Test
+    fun `test amount with currency near keyword gets high score`() {
+        val text = "Monto\n\$ 25.00"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(25.00, result.amount!!, 0.001)
+        assertEquals(Confidence.HIGH, result.confidence)
+    }
+
+    @Test
+    fun `test currency amount near keyword beats plain amount`() {
+        val text = "Item 1: 4399\nMonto\n\$ 25.00"
+        val result = AmountDetector().detectFromText(text)
+        assertEquals(25.00, result.amount!!, 0.001)
+    }
 }
