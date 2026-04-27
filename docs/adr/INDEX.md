@@ -70,6 +70,10 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-050](architecture/ADR-050-preserve-payment-state-on-card-update.md) | Preservar estado de pago al actualizar tarjeta — cargar existente + `.copy()` en `saveCard()` | architecture | Aceptado | 2026-04-17 |
 | [ADR-051](ui/ADR-051-recurring-expenses.md) | Gastos Recurrentes — Entity separada + UI + cómputo en corte de período | data, ui | Aceptado | 2026-04-24 |
 | [ADR-052](architecture/ADR-052-ocr-amount-detector-test-fixes.md) | OCR Amount Detector — Fixes de regex, scoring y filtros para pasar tests | architecture | Aceptado | 2026-04-25 |
+| [ADR-053](ui/ADR-053-overdue-payment-fix-and-retroactive-date.md) | Bugfix pago vencido + fecha retroactiva — corrección de períodos y DatePicker en diálogo de pago | ui, data | Aceptado | 2026-04-25 |
+| [ADR-054](ui/ADR-054-card-stats-enhancements-batch1.md) | Mejoras en Estadísticas de Uso — KPIs, filtro de rango, distribución por categoría y tooltip interactivo | ui, data | Aceptado | 2026-04-26 |
+| [ADR-055](architecture/ADR-055-ocr-receipt-edge-case-fixes.md) | OCR Receipt Edge-Case Fixes — Fechas, tarjetas, normalización de keywords y boost de proximidad | architecture | Aceptado | 2026-04-26 |
+| [ADR-056](architecture/ADR-056-ocr-dark-mode-preprocessing-math-fix.md) | OCR Dark-Mode Preprocessing Math Fix — Brightness formula, median detection, retry fallback | architecture | Aceptado | 2026-04-26 |
 
 ## Regla de escritura
 

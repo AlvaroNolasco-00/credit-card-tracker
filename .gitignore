@@ -63,3 +63,4 @@ logs/
 *.sublime-workspace
 *.sublime-projects
 app/build/
+.opencode/*
