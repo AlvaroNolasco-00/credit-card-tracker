@@ -10,6 +10,13 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Fixed
+- 🐛 **OCR Dark-Mode Preprocessing — fórmula de brightness corregida (ADR-056)**
+  - Root cause: `brightness=80` en dark mode colapsaba toda la imagen a negro (`out = -1.8*200 + 80 = -280 → 0`). ML Kit recibía bitmap vacío, retornaba basura como "6".
+  - Fix 1: `brightness = 255 * contrast + lightBrightness` (≈399 para imágenes grandes, ≈317 para pequeñas). Fondo oscuro (v=40) → blanco ✓, texto claro (v=200) → oscuro ✓.
+  - Fix 2: `calculateAverageBrightness()` usa mediana en lugar de media. Headers blancos (logo Credicomer) ya no sesgan la detección de dark mode.
+  - Fix 3: retry sin filtro de color si primer pase retorna `NONE`/`LOW`. `raw.recycle()` diferido hasta después del retry.
+  - Fix 4: `OcrPreprocessingMathTest.kt` — 8 tests JVM puros que validan la fórmula del ColorMatrix sin SDK Android.
+  - Archivos: `OcrProcessor.kt`, `OcrPreprocessingMathTest.kt` (nuevo)
 - ✅ OCR Amount Detector — fixes de regex, scoring y filtros para pasar 24/24 tests (ADR-052)
   - `amountRegex`: ahora captura números de 4+ dígitos sin separador de miles (`12500.00`)
   - `correctOcrErrors`: removida corrección `L→1` que corrompía moneda Lempira (`L300.50`)
@@ -17,8 +24,39 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
   - `SCORE_LAST_AMOUNT`: subido de 5 a 20 para alcanzar `Confidence.MEDIUM` en fallback
   - Eliminadas penalizaciones `-5`/`-10` en candidatos cercanos a keywords
   - `idKeywords`: agregados `tel`, `telefono`, `teléfono`, `cel`, `celular`, `fax` para filtrar números telefónicos
+- 🐛 OCR Amount Detection — fixes de filtrado de fechas, tarjetas, normalización OCR de keywords, boost de proximidad y preprocessing de imágenes pequeñas (ADR-055)
+  - `looksLikeNonMonetary`: `datePatterns` ahora verifica `contextStr` completo en lugar de solo `matchStr`
+  - `cardNumberPatterns`: nuevo filtro para números de tarjeta enmascarados (`**** 4399`) y completos
+  - `normalizeForKeywords`: corrección OCR inversa (0→O, 1→l, 5→S) aplicada antes de keyword matching
+  - `findAmountsWithCurrencyNearKeywordsScored`: nueva capa de detección con score 60 para montos con símbolo de moneda cerca de keywords
+  - `preprocessBitmapForOcr`: agregado `minDim=512` para upscaling de crops pequeños; ML Kit necesita texto de ~18-20px mínimo
+  - `preprocessBitmapForOcr`: contraste/brightness más conservadores para imágenes <1000px (evita destruir bordes anti-aliased)
+  - Logging agregado para debuggear dimensiones de entrada/salida y texto de ML Kit
+- 🐛 **Pago vencido no permitía registrar pago cuando hoy < día de corte del mes actual (ADR-053)**
+  - Root cause: `DashboardViewModel.loadDashboard()` solo calculaba `isPaid`/`cutPeriodTotal` cuando `hasCutOffPassedThisMonth() == true`, ocultando el botón Pagar entre el vencimiento y el día de corte.
+  - Fix: Siempre calcular período anterior, `isPaid`, `prevFlow` y `overduedays` para todas las tarjetas. `cutOffHappenedThisMonth` se mantiene solo para el split visual (ADR-021).
+  - `DateUtils.getPreviousPeriodRange()`: corregido cálculo del fin del período anterior usando `getCurrentPeriodRange()` como ancla (evita retornar el período actual como "anterior" cuando `today < cutOffDay`).
+  - `DateUtils.getDaysOverduePayment()`: eliminada guarda `if (!hasCutOffPassedThisMonth) return 0` que enmascaraba el vencimiento real.
+  - `DashboardScreen`: condición de visibilidad de `PayBalanceCard` ahora usa `>= 0.0` en lugar de `> 0.0`, permitiendo registrar pago cuando el saldo del corte es $0 pero el pago está vencido (ej: gastos nuevos post-corte, ciclo anterior sin gastos).
+  - `PayBalanceCard`: diálogo permite confirmar pago de $0.00 cuando `remaining == 0`, para limpiar el estado de vencido sin saldo pendiente.
 
 ### Added
+- ✅ Mejoras en Estadísticas de Uso — Batch 1, 2 & 3: KPIs, filtro de rango, distribución por categoría, tooltip interactivo, pagos vs gastos, badge de salud e insights automáticos (ADR-054)
+  - `ActivityLog`: nuevo campo `amount: Double?` para rastrear montos de pagos de forma estructurada
+  - Migración DB v14→v15: `ALTER TABLE activity_logs ADD COLUMN amount REAL`
+  - `CreditCardRepository.logPayment()`: ahora persiste el monto en el log
+  - `PeriodStats` expandido: `totalPaymentsAmount`, `categoryBreakdown`, `avgTransactionAmount`, `creditUtilizationPercent`
+  - `PeriodsSummary`: promedio mensual, mes con más gasto, total transacciones/pagos, utilización promedio
+  - Filtro de rango de tiempo: chips `1M | 3M | 6M | 1A` recalculan períodos dinámicamente
+  - KPIs visuales: promedio mensual, mes peak, tendencia % vs anterior, utilización de crédito con semáforo de color
+  - Tooltip flotante sobre puntos del gráfico mostrando monto exacto
+  - Sección "Gastos por Categoría": top 5 con barras de progreso, porcentajes y montos
+  - Calendario de calor mejorado: leyenda visual, escala por máximo del período, estado vacío para días sin gastos
+  - Fallback de color para categorías: generación consistente vía hash del nombre
+  - Gráfico "Pagos vs Gastos": barras duales por período comparando gastos (verde) vs pagos (azul)
+  - Badge de salud del período: "Pagado" / "Parcial" / "Pendiente" con semáforo de color
+  - Motor de insights automáticos: 7 reglas de generación (tendencia, categoría dominante, utilización, pagos, promedio, patrón, actividad baja)
+  - Carrusel de insights con auto-scroll cada 5 segundos, transiciones suaves e indicadores de página
 - ✅ Gastos recurrentes (ADR-051)
   - Entity `RecurringExpense` con FK a `CreditCard`, campos `amount`, `description`, `dayOfMonth` (nullable), `isActive`
   - Junction table `RecurringExpenseCategory` para categorías (mismo patrón que `ExpenseCategory`)
@@ -58,6 +96,12 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
   - Botón "Guardar Gasto" deshabilitado durante OCR (previene guardado prematuro)
   - Previene flujos paralelos y race conditions
 - ✅ Exclusiones mejoradas en `looksLikeNonMonetary()`: porcentajes (IVA, descuentos), códigos postales (C.P., ZIP) y cantidades de ítems ("2 x $25")
+- ✅ **Fecha retroactiva en diálogo de pago (ADR-053)**
+  - `PayBalanceCard`: agregado `DatePickerDialog` de Material3 para elegir la fecha real del pago.
+  - Restricción de fechas: solo permite hoy y fechas pasadas (`SelectableDates`).
+  - `DashboardViewModel.payPartial()` y `payBalance()` aceptan `paymentDate: Long` (default `System.currentTimeMillis()`).
+  - `lastPaymentDate` ahora refleja la fecha elegida por el usuario, no siempre el momento actual.
+  - Tests unitarios: `DateUtilsTest.kt` con 44 casos de borde para `getCurrentPeriodRange`, `getPreviousPeriodRange`, `getDaysOverduePayment`, `getPaymentDueDateForCurrentCycle`.
 - ✅ Sistema de pesos (scoring) unificado para detección OCR: acumula candidatos de 6 capas y elige ganador por puntuación
   - Base scores por capa (Geometric 50, Column 35, Keyword 40, Position 25, LastSection 15, Fallback 5)
   - Bonificaciones: símbolo de moneda (+30), monto máximo en bottom 30% (+20), keyword en bloque (+15)
@@ -101,7 +145,8 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 - 🐛 **ImageCropCanvas — Refactorización de gestos (ADR-045):** Eliminación del comportamiento errático al cambiar entre modos. Arquitectura anterior tenía dos `pointerInput` compitiendo en el mismo `Box` + hack `PointerEventPass.Initial` frágil. Solución final: un único `Canvas` con un único `pointerInput(isDrawMode)` que usa `if/else` — cuando `isDrawMode` cambia, Compose cancela y reinicia la coroutine desde cero, garantizando que solo un detector de gestos corre a la vez sin estado residual. Dibujo usa `awaitFirstDown()` + `drag()`; zoom/pan usa `detectTransformGestures`. Imagen y rectángulo de selección se dibujan en el mismo Canvas (mismas coordenadas, sin desfase para el crop).
   **File:** `app/src/main/java/com/alvaronolasco/creditcardtracker/ui/expenses/AddExpenseScreen.kt` (líneas 994–1072)
 
-**ADRs:** 
+**ADRs:**
+- [ADR-053](docs/adr/ui/ADR-053-overdue-payment-fix-and-retroactive-date.md) — Bugfix pago vencido + fecha retroactiva
 - [ADR-051](docs/adr/ui/ADR-051-recurring-expenses.md) — Gastos recurrentes
 - [ADR-050](docs/adr/architecture/ADR-050-preserve-payment-state-on-card-update.md) — Preservar estado de pago al actualizar tarjeta
 - [ADR-049](docs/adr/ui/ADR-049-overdue-payment-alerts.md) — Alertas visuales de pago vencido

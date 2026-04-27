@@ -3,6 +3,8 @@ package com.alvaronolasco.creditcardtracker.ui.stats
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.alvaronolasco.creditcardtracker.data.entity.CreditCard
 import com.alvaronolasco.creditcardtracker.data.entity.ExpenseWithCategories
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
@@ -20,6 +22,13 @@ import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
 
+data class CategorySpend(
+    val categoryName: String,
+    val amount: Double,
+    val percentage: Float,
+    val transactionCount: Int
+)
+
 data class PeriodStats(
     val startDate: Long,
     val endDate: Long,
@@ -27,15 +36,31 @@ data class PeriodStats(
     val totalExpenses: Double,
     val expensesCount: Int,
     val paymentsCount: Int,
-    val expensesByDay: Map<Int, Double>, // Day of month to amount
-    val expenseDetails: List<ExpenseWithCategories>
+    val totalPaymentsAmount: Double,
+    val expensesByDay: Map<Int, Double>,
+    val expenseDetails: List<ExpenseWithCategories>,
+    val categoryBreakdown: List<CategorySpend>,
+    val avgTransactionAmount: Double,
+    val creditUtilizationPercent: Float
+)
+
+data class PeriodsSummary(
+    val avgMonthlyExpense: Double,
+    val maxMonthlyExpense: Double,
+    val maxExpensePeriodLabel: String,
+    val totalTransactions: Int,
+    val totalPaymentsMade: Int,
+    val overallCreditUtilization: Float
 )
 
 data class CardStatsUiState(
     val card: CreditCard? = null,
     val periods: List<PeriodStats> = emptyList(),
     val selectedPeriodIndex: Int = -1,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val monthCount: Int = 6,
+    val summary: PeriodsSummary? = null,
+    val insights: List<Insight> = emptyList()
 )
 
 @HiltViewModel
@@ -54,27 +79,51 @@ class CardStatsViewModel @Inject constructor(
 
     private fun loadStats() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             val card = repository.getCardById(cardId)
-            if (card == null) return@launch
-            
-            // Get last 6 months of periods
-            val ranges = DateUtils.getPeriodsRange(card.cutOffDay, 6)
-            
+            if (card == null) {
+                _uiState.update { it.copy(isLoading = false) }
+                return@launch
+            }
+
+            val monthCount = _uiState.value.monthCount
+            val ranges = DateUtils.getPeriodsRange(card.cutOffDay, monthCount)
+
             val periodStatsList = coroutineScope {
                 ranges.map { (start, end) ->
                     async {
                         val expenses = repository.getExpensesWithCategoriesInPeriod(cardId, start, end).first()
                         val logs = repository.getLogsByEntityInPeriod(cardId, "CARD", start, end).first()
-                        
+
                         val payments = logs.filter { it.action == "PAYMENT" }
-                        val totalPayments = payments.size
-                        
+                        val totalPaymentsCount = payments.size
+                        val totalPaymentsAmount = payments.sumOf { it.amount ?: 0.0 }
+
                         val total = expenses.sumOf { it.expense.amount }
                         val count = expenses.size
-                        
-                        val byDay = expenses.groupBy { 
+
+                        val byDay = expenses.groupBy {
                             Instant.ofEpochMilli(it.expense.date).atZone(ZoneId.systemDefault()).toLocalDate().dayOfMonth
                         }.mapValues { (_, group) -> group.sumOf { it.expense.amount } }
+
+                        val categoryBreakdown = expenses
+                            .flatMap { ewc -> ewc.categories.map { cat -> cat.name to ewc.expense.amount } }
+                            .groupBy { it.first }
+                            .mapValues { (_, list) -> list.sumOf { it.second } }
+                            .toList()
+                            .sortedByDescending { it.second }
+                            .take(5)
+                            .map { (name, amount) ->
+                                CategorySpend(
+                                    categoryName = name,
+                                    amount = amount,
+                                    percentage = if (total > 0) (amount / total).toFloat() else 0f,
+                                    transactionCount = expenses.count { it.categories.any { c -> c.name == name } }
+                                )
+                            }
+
+                        val avgTx = if (count > 0) total / count else 0.0
+                        val utilization = if (card.creditLimit > 0) (total / card.creditLimit).toFloat() else 0f
 
                         val startLocalDate = Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault()).toLocalDate()
                         val monthName = startLocalDate.month.getDisplayName(TextStyle.SHORT, Locale("es"))
@@ -86,19 +135,45 @@ class CardStatsViewModel @Inject constructor(
                             periodLabel = label,
                             totalExpenses = total,
                             expensesCount = count,
-                            paymentsCount = totalPayments,
+                            paymentsCount = totalPaymentsCount,
+                            totalPaymentsAmount = totalPaymentsAmount,
                             expensesByDay = byDay,
-                            expenseDetails = expenses
+                            expenseDetails = expenses,
+                            categoryBreakdown = categoryBreakdown,
+                            avgTransactionAmount = avgTx,
+                            creditUtilizationPercent = utilization.coerceIn(0f, 1f)
                         )
                     }
                 }.awaitAll()
             }
 
-            _uiState.update { 
+            val summary = if (periodStatsList.isNotEmpty()) {
+                val avg = periodStatsList.sumOf { it.totalExpenses } / periodStatsList.size
+                val maxPeriod = periodStatsList.maxByOrNull { it.totalExpenses }
+                PeriodsSummary(
+                    avgMonthlyExpense = avg,
+                    maxMonthlyExpense = maxPeriod?.totalExpenses ?: 0.0,
+                    maxExpensePeriodLabel = maxPeriod?.periodLabel ?: "",
+                    totalTransactions = periodStatsList.sumOf { it.expensesCount },
+                    totalPaymentsMade = periodStatsList.sumOf { it.paymentsCount },
+                    overallCreditUtilization = periodStatsList.map { it.creditUtilizationPercent }.average().toFloat()
+                )
+            } else null
+
+            val selectedIndex = if (periodStatsList.isNotEmpty()) periodStatsList.size - 1 else -1
+            val insights = CardStatsInsights.generateInsights(
+                periods = periodStatsList,
+                selectedIndex = selectedIndex,
+                cardName = card.name
+            )
+
+            _uiState.update {
                 it.copy(
                     card = card,
                     periods = periodStatsList,
-                    selectedPeriodIndex = if (periodStatsList.isNotEmpty()) periodStatsList.size - 1 else -1,
+                    selectedPeriodIndex = selectedIndex,
+                    summary = summary,
+                    insights = insights,
                     isLoading = false
                 )
             }
@@ -106,6 +181,21 @@ class CardStatsViewModel @Inject constructor(
     }
 
     fun selectPeriod(index: Int) {
-        _uiState.update { it.copy(selectedPeriodIndex = index) }
+        val currentState = _uiState.value
+        if (index == currentState.selectedPeriodIndex) return
+        
+        val newInsights = CardStatsInsights.generateInsights(
+            periods = currentState.periods,
+            selectedIndex = index,
+            cardName = currentState.card?.name ?: ""
+        )
+        _uiState.update { it.copy(selectedPeriodIndex = index, insights = newInsights) }
+    }
+
+    fun selectMonthCount(count: Int) {
+        if (count != _uiState.value.monthCount) {
+            _uiState.update { it.copy(monthCount = count, selectedPeriodIndex = -1) }
+            loadStats()
+        }
     }
 }

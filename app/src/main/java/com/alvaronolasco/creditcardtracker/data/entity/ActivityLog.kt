@@ -15,5 +15,6 @@ data class ActivityLog(
     val description: String,
     val timestamp: Long = System.currentTimeMillis(),
     val entityId: Int? = null,
-    val entityType: String? = null
+    val entityType: String? = null,
+    val amount: Double? = null
 )

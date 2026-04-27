@@ -53,7 +53,8 @@ class CreditCardRepository @Inject constructor(
                 action = "PAYMENT",
                 description = "Pago de \$${String.format("%.2f", amount)} a tarjeta '$cardName'",
                 entityId = cardId,
-                entityType = "CARD"
+                entityType = "CARD",
+                amount = amount
             )
         )
     }
