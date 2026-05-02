@@ -1,0 +1,18 @@
+// Firestore Security Rules — promotions collection
+// Apply manually in Firebase Console → Firestore → Rules
+// OR merge into root firestore.rules of your Android project
+//
+// These rules allow any authenticated user (including anonymous) to READ promotions.
+// Writes are blocked from clients — only the Admin SDK (service account) can write.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /promotions/{promoId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+  }
+}

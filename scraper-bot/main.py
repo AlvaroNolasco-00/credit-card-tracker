@@ -1,37 +1,38 @@
 import requests
-import json
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from playwright.sync_api import sync_playwright
 
+from storage.base import PromotionStorage
+
+
 class BankScraper:
-    def __init__(self):
+    def __init__(self, storage: PromotionStorage):
+        self.storage = storage
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
             'Referer': 'https://www.bancoagricola.com/promociones'
         }
-        self.output_dir = 'output'
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
 
     def scrape_banco_agricola(self):
         print("Scraping Banco Agricola...")
+        slug = 'agricola'
+        run_started_at = datetime.now(tz=timezone.utc)
         url = "https://www.bancoagricola.com/com/promociones/promociones_get?segmento=principal"
-        
+
         try:
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             data = response.json()
-            
-            # Simple normalization of the data
+
             promotions_raw = []
             if isinstance(data, list):
                 promotions_raw = data
             elif isinstance(data, dict) and 'promociones' in data:
                 promotions_raw = data['promociones']
-            
+
             promotions = []
             for item in promotions_raw:
                 if isinstance(item, dict):
@@ -47,18 +48,21 @@ class BankScraper:
                         'image': item.get('imagen_peq')
                     }
                     promotions.append(promo)
-            
-            self.save_json('agricola.json', promotions)
+
+            self.storage.save(slug, promotions)
+            self.storage.finalize_bank(slug, run_started_at)
             return promotions
-            
+
         except Exception as e:
             print(f"Error scraping Banco Agricola: {e}")
             return []
 
     def scrape_banco_cuscatlan(self):
         print("Scraping Banco Cuscatlan via Playwright interception...")
+        slug = 'cuscatlan'
+        run_started_at = datetime.now(tz=timezone.utc)
         promotions = []
-        
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
@@ -110,18 +114,21 @@ class BankScraper:
                 print(f"Error navigating: {e}")
             
             browser.close()
-            
-        self.save_json('cuscatlan.json', promotions)
+
+        self.storage.save(slug, promotions)
+        self.storage.finalize_bank(slug, run_started_at)
         return promotions
 
     def scrape_banco_bac(self):
         print("Scraping BAC Credomatic via Playwright DOM Parsing...")
+        slug = 'bac'
+        run_started_at = datetime.now(tz=timezone.utc)
         promotions = []
-        
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            
+
             try:
                 page.goto("https://www.baccredomatic.com/es-sv/personas/promociones", wait_until="networkidle", timeout=30000)
                 # Wait for the cards to load
@@ -169,14 +176,17 @@ class BankScraper:
                 print(f"Error navigating BAC: {e}")
             
             browser.close()
-            
-        self.save_json('bac.json', promotions)
+
+        self.storage.save(slug, promotions)
+        self.storage.finalize_bank(slug, run_started_at)
         return promotions
 
     def scrape_banco_promerica(self):
         print("Scraping Banco Promerica via Playwright DOM Parsing...")
+        slug = 'promerica'
+        run_started_at = datetime.now(tz=timezone.utc)
         promotions = []
-        
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
@@ -238,14 +248,17 @@ class BankScraper:
                 print(f"Error navigating Promerica: {e}")
             
             browser.close()
-            
-        self.save_json('promerica.json', promotions)
+
+        self.storage.save(slug, promotions)
+        self.storage.finalize_bank(slug, run_started_at)
         return promotions
 
     def scrape_banco_davivienda(self):
         print("Scraping Banco Davivienda via Playwright DOM Parsing...")
+        slug = 'davivienda'
+        run_started_at = datetime.now(tz=timezone.utc)
         promotions = []
-        
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
@@ -325,14 +338,17 @@ class BankScraper:
                 print(f"Error navigating Davivienda: {e}")
             
             browser.close()
-            
-        self.save_json('davivienda.json', promotions)
+
+        self.storage.save(slug, promotions)
+        self.storage.finalize_bank(slug, run_started_at)
         return promotions
 
     def scrape_banco_credicomer(self):
         print("Scraping Banco Credicomer via Playwright DOM Parsing...")
+        slug = 'credicomer'
+        run_started_at = datetime.now(tz=timezone.utc)
         promotions = []
-        
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
@@ -398,29 +414,26 @@ class BankScraper:
                 print(f"Error navigating Credicomer: {e}")
             
             browser.close()
-            
-        self.save_json('credicomer.json', promotions)
+
+        self.storage.save(slug, promotions)
+        self.storage.finalize_bank(slug, run_started_at)
         return promotions
 
-    def save_json(self, filename, data):
-        # Add timestamp to filename: e.g. agricola_2026-04-16_14-30-00.json
-        ts = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        name, ext = os.path.splitext(filename)
-        timestamped_filename = f"{name}_{ts}{ext}"
-        filepath = os.path.join(self.output_dir, timestamped_filename)
-        
-        now_iso = datetime.now().isoformat()
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump({
-                'last_updated': now_iso,
-                'run_timestamp': ts,
-                'total_promotions': len(data),
-                'promotions': data
-            }, f, indent=4, ensure_ascii=False)
-        print(f"Saved {len(data)} promotions to {filepath}")
 
 if __name__ == "__main__":
-    scraper = BankScraper()
+    from dotenv import load_dotenv
+    from storage.json_storage import JsonStorage
+    from storage.firestore_storage import FirestoreStorage
+    from storage.composite_storage import CompositeStorage
+
+    load_dotenv()
+
+    storage = CompositeStorage([
+        JsonStorage(output_dir='output'),
+        FirestoreStorage(project_id=os.environ['FIREBASE_PROJECT_ID']),
+    ])
+
+    scraper = BankScraper(storage=storage)
     scraper.scrape_banco_agricola()
     scraper.scrape_banco_cuscatlan()
     scraper.scrape_banco_bac()

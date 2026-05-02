@@ -8,19 +8,30 @@
 
 ```
 scraper-bot/
-├── main.py             # Script principal con la lógica de los 6 bancos
-├── requirements.txt    # Dependencias (requests, playwright)
-└── output/             # Carpeta de resultados (auto-generada)
-    └── agricola_2026-04-16_16-57-23.json # Ejemplo con timestamp
+├── main.py                     # Script principal con la lógica de los 6 bancos
+├── requirements.txt            # Dependencias
+├── .env.example                # Variables de entorno requeridas
+├── firestore.rules             # Reglas de Firestore (aplicar manualmente)
+├── storage/
+│   ├── base.py                 # Interfaz PromotionStorage
+│   ├── json_storage.py         # Backup local en output/
+│   ├── firestore_storage.py    # Writer a Firebase Firestore
+│   └── composite_storage.py   # Escribe a ambos (JSON + Firestore)
+├── utils/
+│   └── promo_id.py             # Hash estable para IDs de documentos
+├── config/
+│   └── service-account.json   # (gitignored) Credencial Firebase
+└── output/                    # Carpeta de resultados local (auto-generada)
 ```
 
 ---
 
 ## Requisitos
 
-- **Python 3.9+** instalado.
-- **Playwright** para la automatización de navegadores (requerido para Cuscatlán, BAC, Promerica, Davivienda y Credicomer).
-- La librería `requests` para Banco Agrícola.
+- **Python 3.11+** instalado.
+- **Playwright** para la automatización de navegadores.
+- **Firebase Admin SDK** para escribir en Firestore.
+- Un archivo `config/service-account.json` con credenciales de Firebase (ver sección Configuración de Firebase).
 
 ---
 
@@ -38,6 +49,20 @@ python3 -m playwright install chromium
 
 ---
 
+## Configuración de Firebase
+
+1. Abre [Firebase Console](https://console.firebase.google.com/) → proyecto `credit-card-3848f`.
+2. Ve a **Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada**.
+3. Descarga el JSON y guárdalo en `config/service-account.json` (este archivo está en `.gitignore`, nunca lo subas al repositorio).
+4. Copia `.env.example` a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   El `.env` ya apunta a `./config/service-account.json` por defecto. No necesitas editarlo a menos que uses otra ruta.
+5. Aplica las reglas de Firestore: copia el contenido de `firestore.rules` en **Firebase Console → Firestore → Reglas** y publica.
+
+---
+
 ## Cómo Ejecutar
 
 ```bash
@@ -45,13 +70,21 @@ cd scraper-bot
 python3 main.py
 ```
 
+Output esperado:
+
 ```
 Scraping Banco Agricola...
-Saved 41 promotions to output/agricola_2026-04-16_16-55-33.json
+Saved 41 promotions to output/agricola_2026-05-02_14-30-00.json
+Wrote 41 docs to Firestore promotions/ for bank=agricola
+Soft-deleted 0 stale docs for bank=agricola
 ...
 Scraping Banco Credicomer via Playwright DOM Parsing...
-Saved 15 promotions to output/credicomer_2026-04-16_16-56-13.json
+Saved 15 promotions to output/credicomer_2026-05-02_14-32-10.json
+Wrote 15 docs to Firestore promotions/ for bank=credicomer
+Soft-deleted 2 stale docs for bank=credicomer
 ```
+
+Los archivos JSON en `output/` se siguen generando como respaldo local.
 
 ---
 
@@ -130,6 +163,8 @@ Copia el método existente como base:
 ```python
 def scrape_banco_nuevo(self):
     print("Scraping Banco Nuevo...")
+    slug = 'banco_nuevo'
+    run_started_at = datetime.now(tz=timezone.utc)
     url = "https://www.banconuevo.com/api/promociones"  # <-- reemplaza con el endpoint real
 
     try:
@@ -159,7 +194,9 @@ def scrape_banco_nuevo(self):
                 }
                 promotions.append(promo)
 
-        self.save_json('banco_nuevo.json', promotions)
+        slug = 'banco_nuevo'
+        self.storage.save(slug, promotions)
+        self.storage.finalize_bank(slug, run_started_at)
         return promotions
 
     except Exception as e:
@@ -171,7 +208,7 @@ def scrape_banco_nuevo(self):
 
 ```python
 if __name__ == "__main__":
-    scraper = BankScraper()
+    # ... (setup de storage igual que el existente)
     scraper.scrape_banco_agricola()
     scraper.scrape_banco_nuevo()  # <-- agregar aquí
 ```
