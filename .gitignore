@@ -68,6 +68,9 @@ app/build/
 # Added by code-review-graph
 .code-review-graph/
 
+# Firebase — never commit, contains API keys
+app/google-services.json
+
 # IDE configs
 .cursor/
 .kiro/
