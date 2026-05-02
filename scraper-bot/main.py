@@ -421,17 +421,29 @@ class BankScraper:
 
 
 if __name__ == "__main__":
+    import argparse
     from dotenv import load_dotenv
     from storage.json_storage import JsonStorage
     from storage.firestore_storage import FirestoreStorage
     from storage.composite_storage import CompositeStorage
 
+    parser = argparse.ArgumentParser(description='Bank promotions scraper')
+    parser.add_argument(
+        '--local',
+        action='store_true',
+        help='Save to JSON only, skip Firestore (no Firebase credentials required)',
+    )
+    args = parser.parse_args()
+
     load_dotenv()
 
-    storage = CompositeStorage([
-        JsonStorage(output_dir='output'),
-        FirestoreStorage(project_id=os.environ['FIREBASE_PROJECT_ID']),
-    ])
+    if args.local:
+        storage = JsonStorage(output_dir='output')
+    else:
+        storage = CompositeStorage([
+            JsonStorage(output_dir='output'),
+            FirestoreStorage(project_id=os.environ['FIREBASE_PROJECT_ID']),
+        ])
 
     scraper = BankScraper(storage=storage)
     scraper.scrape_banco_agricola()
