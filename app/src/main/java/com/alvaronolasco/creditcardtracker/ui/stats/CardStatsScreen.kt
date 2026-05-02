@@ -33,6 +33,7 @@ import com.alvaronolasco.creditcardtracker.ui.theme.*
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.*
 
@@ -44,6 +45,9 @@ fun CardStatsScreen(
     viewModel: CardStatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isDark = isSystemInDarkTheme()
+    val chartAccentColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val (catColorLo, catColorHi) = if (isDark) 140 to 255 else 80 to 200
 
     Scaffold(
         topBar = {
@@ -190,7 +194,7 @@ fun CardStatsScreen(
                                 if (day != null) {
                                     val dayExpenses = period.expenseDetails.filter { expense ->
                                         val expenseDate = Instant.ofEpochMilli(expense.expense.date)
-                                            .atZone(ZoneId.systemDefault())
+                                            .atZone(ZoneOffset.UTC)
                                             .toLocalDate()
                                         expenseDate == day
                                     }
@@ -218,7 +222,7 @@ fun CardStatsScreen(
                                                 } else {
                                                     dayExpenses.forEach { expense ->
                                                         val expenseTime = Instant.ofEpochMilli(expense.expense.date)
-                                                            .atZone(ZoneId.systemDefault())
+                                                            .atZone(ZoneOffset.UTC)
                                                             .toLocalTime()
 
                                                         Row(
@@ -233,9 +237,9 @@ fun CardStatsScreen(
                                                                 val catColor = if (category != null) {
                                                                     val hash = category.name.hashCode()
                                                                     Color(
-                                                                        (hash and 0xFF0000 shr 16).coerceIn(80, 200),
-                                                                        (hash and 0x00FF00 shr 8).coerceIn(80, 200),
-                                                                        (hash and 0x0000FF).coerceIn(80, 200)
+                                                                        (hash and 0xFF0000 shr 16).coerceIn(catColorLo, catColorHi),
+                                                                        (hash and 0x00FF00 shr 8).coerceIn(catColorLo, catColorHi),
+                                                                        (hash and 0x0000FF).coerceIn(catColorLo, catColorHi)
                                                                     )
                                                                 } else MaterialTheme.colorScheme.outline
 
@@ -243,7 +247,7 @@ fun CardStatsScreen(
                                                                     modifier = Modifier
                                                                         .size(36.dp)
                                                                         .clip(CircleShape)
-                                                                        .background(catColor.copy(alpha = 0.15f)),
+                                                                        .background(catColor.copy(alpha = if (isDark) 0.25f else 0.15f)),
                                                                     contentAlignment = Alignment.Center
                                                                 ) {
                                                                     Text(
@@ -271,7 +275,7 @@ fun CardStatsScreen(
                                                                 "$${String.format("%,.2f", expense.expense.amount)}",
                                                                 style = MaterialTheme.typography.bodyMedium,
                                                                 fontWeight = FontWeight.Bold,
-                                                                color = ForestGreen
+                                                                color = chartAccentColor
                                                             )
                                                         }
 
@@ -331,6 +335,8 @@ fun RangeFilterChips(
     onSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
+    val chipAccentColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -344,15 +350,15 @@ fun RangeFilterChips(
                 onClick = { onSelected(count) },
                 label = { Text(label) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = ForestGreen.copy(alpha = 0.15f),
-                    selectedLabelColor = ForestGreen,
-                    selectedLeadingIconColor = ForestGreen
+                    selectedContainerColor = chipAccentColor.copy(alpha = 0.15f),
+                    selectedLabelColor = chipAccentColor,
+                    selectedLeadingIconColor = chipAccentColor
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = isSelected,
                     borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    selectedBorderColor = ForestGreen.copy(alpha = 0.5f)
+                    selectedBorderColor = chipAccentColor.copy(alpha = 0.5f)
                 )
             )
         }
@@ -366,6 +372,9 @@ fun KpiSummaryRow(
     previousPeriod: PeriodStats?,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
+    val kpiPositiveColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
+
     val trendPercent = remember(selectedPeriod, previousPeriod) {
         if (selectedPeriod != null && previousPeriod != null && previousPeriod.totalExpenses > 0) {
             ((selectedPeriod.totalExpenses - previousPeriod.totalExpenses) / previousPeriod.totalExpenses * 100).toFloat()
@@ -406,7 +415,7 @@ fun KpiSummaryRow(
                             label = "vs mes anterior",
                             value = "${if (trendPercent > 0) "+" else ""}${String.format("%.1f", trendPercent)}%",
                             icon = if (isPositiveTrend) Icons.Default.TrendingDown else Icons.Default.TrendingUp,
-                            valueColor = if (isPositiveTrend) ForestGreen else MaterialTheme.colorScheme.error,
+                            valueColor = if (isPositiveTrend) kpiPositiveColor else MaterialTheme.colorScheme.error,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -418,7 +427,7 @@ fun KpiSummaryRow(
                             valueColor = when {
                                 selectedPeriod.creditUtilizationPercent > 0.8f -> MaterialTheme.colorScheme.error
                                 selectedPeriod.creditUtilizationPercent > 0.5f -> Color(0xFFFFA000)
-                                else -> ForestGreen
+                                else -> kpiPositiveColor
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -485,6 +494,10 @@ fun StatsChartSection(
 ) {
     if (periods.isEmpty()) return
 
+    val isDark = isSystemInDarkTheme()
+    val chartPrimary = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val chartBgAccent = if (isDark) Color(0xFF66BB6A) else MintGreen
+
     Column(modifier = Modifier.padding(20.dp)) {
         Text(
             "Gastos por Periodo",
@@ -502,7 +515,7 @@ fun StatsChartSection(
                 .height(220.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        listOf(MintGreen.copy(alpha = 0.15f), Color.Transparent)
+                        listOf(chartBgAccent.copy(alpha = if (isDark) 0.08f else 0.15f), Color.Transparent)
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
@@ -564,7 +577,7 @@ fun StatsChartSection(
                 Text(
                     period.periodLabel,
                     fontSize = 11.sp,
-                    color = if (index == selectedIndex) ForestGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (index == selectedIndex) chartPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (index == selectedIndex) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
@@ -592,7 +605,10 @@ fun LineChart(
         ),
         label = "halo"
     )
-    val guideColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+    val isDark = isSystemInDarkTheme()
+    val chartPrimary = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val dotOutlineColor = if (isDark) Color(0xFF1B241E) else Color.White
+    val guideColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isDark) 0.15f else 0.08f)
 
     Canvas(modifier = modifier.pointerInput(periods) {
         detectTapGestures { offset ->
@@ -637,7 +653,7 @@ fun LineChart(
 
         drawPath(
             path = path,
-            color = ForestGreen,
+            color = chartPrimary,
             style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
@@ -650,32 +666,32 @@ fun LineChart(
         drawPath(
             path = fillPath,
             brush = Brush.verticalGradient(
-                listOf(ForestGreen.copy(alpha = 0.25f), Color.Transparent)
+                listOf(chartPrimary.copy(alpha = if (isDark) 0.2f else 0.25f), Color.Transparent)
             )
         )
 
         points.forEachIndexed { index, offset ->
             val isSelected = index == selectedIndex
-            val color = if (isSelected) ForestGreen else ForestGreen.copy(alpha = 0.5f)
+            val color = if (isSelected) chartPrimary else chartPrimary.copy(alpha = if (isDark) 0.7f else 0.5f)
             val radius = if (isSelected) 6.dp.toPx() else 4.dp.toPx()
 
             if (isSelected) {
                 drawLine(
-                    color = ForestGreen.copy(alpha = 0.15f),
+                    color = chartPrimary.copy(alpha = if (isDark) 0.25f else 0.15f),
                     start = Offset(offset.x, 0f),
                     end = Offset(offset.x, height),
                     strokeWidth = 1.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
                 )
                 drawCircle(
-                    color = ForestGreen.copy(alpha = haloAlpha),
+                    color = chartPrimary.copy(alpha = haloAlpha),
                     radius = radius + 8.dp.toPx(),
                     center = offset
                 )
             }
 
             drawCircle(
-                color = Color.White,
+                color = dotOutlineColor,
                 radius = radius + 2.dp.toPx(),
                 center = offset
             )
@@ -690,6 +706,9 @@ fun LineChart(
 
 @Composable
 fun PeriodDetailSection(period: PeriodStats) {
+    val isDark = isSystemInDarkTheme()
+    val iconBgColor = if (isDark) Color(0xFF2A3F30) else MintGreen
+    val iconTintColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -700,10 +719,10 @@ fun PeriodDetailSection(period: PeriodStats) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(MintGreen),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(iconBgColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Payments, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Payments, contentDescription = null, tint = iconTintColor, modifier = Modifier.size(20.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -754,9 +773,11 @@ fun PeriodDetailSection(period: PeriodStats) {
 
 @Composable
 fun PaymentHealthBadge(period: PeriodStats, modifier: Modifier = Modifier) {
+    val isDark = isSystemInDarkTheme()
+    val healthyColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
     val isFullyPaid = period.totalPaymentsAmount >= period.totalExpenses
     val color = when {
-        isFullyPaid -> ForestGreen
+        isFullyPaid -> healthyColor
         period.totalPaymentsAmount > 0 -> Color(0xFFFFA000)
         else -> MaterialTheme.colorScheme.error
     }
@@ -798,6 +819,9 @@ fun CategoryBreakdownSection(
     categories: List<CategorySpend>,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
+    val (colorLo, colorHi) = if (isDark) 140 to 255 else 80 to 200
+
     Column(modifier = modifier) {
         Text(
             "Gastos por Categoría",
@@ -833,12 +857,12 @@ fun CategoryBreakdownSection(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     categories.forEachIndexed { index, cat ->
-                        val catColor = remember(cat.categoryName) {
+                        val catColor = remember(cat.categoryName, isDark) {
                             val hash = cat.categoryName.hashCode()
                             Color(
-                                (hash and 0xFF0000 shr 16).coerceIn(80, 200),
-                                (hash and 0x00FF00 shr 8).coerceIn(80, 200),
-                                (hash and 0x0000FF).coerceIn(80, 200)
+                                (hash and 0xFF0000 shr 16).coerceIn(colorLo, colorHi),
+                                (hash and 0x00FF00 shr 8).coerceIn(colorLo, colorHi),
+                                (hash and 0x0000FF).coerceIn(colorLo, colorHi)
                             )
                         }
 
@@ -878,7 +902,7 @@ fun CategoryBreakdownSection(
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)),
                             color = catColor,
-                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isDark) 0.2f else 0.1f)
                         )
                         if (index < categories.lastIndex) {
                             Spacer(Modifier.height(12.dp))
@@ -904,6 +928,9 @@ fun InfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Strin
 
 @Composable
 fun CalendarLegend(modifier: Modifier = Modifier) {
+    val isDark = isSystemInDarkTheme()
+    val legendHighColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val legendMidColor = if (isDark) Color(0xFFA5D6A7) else MintGreen
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -912,9 +939,9 @@ fun CalendarLegend(modifier: Modifier = Modifier) {
         Text("Sin gasto", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
         Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)))
         Text("→", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MintGreen.copy(alpha = 0.5f)))
+        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(legendMidColor.copy(alpha = 0.5f)))
         Text("→", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(ForestGreen))
+        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(legendHighColor))
         Text("Alto", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
     }
 }
@@ -925,10 +952,14 @@ fun UsageCalendar(
     selectedDay: LocalDate?,
     onDaySelected: (LocalDate) -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val calAccentColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val calSoftColor = if (isDark) Color(0xFFA5D6A7) else MintGreen
+
     val startInstant = Instant.ofEpochMilli(period.startDate)
     val endInstant = Instant.ofEpochMilli(period.endDate)
-    val startDate = startInstant.atZone(ZoneId.systemDefault()).toLocalDate()
-    val endDate = endInstant.atZone(ZoneId.systemDefault()).toLocalDate()
+    val startDate = startInstant.atZone(ZoneOffset.UTC).toLocalDate()
+    val endDate = endInstant.atZone(ZoneOffset.UTC).toLocalDate()
 
     val days = mutableListOf<LocalDate>()
     var curr = startDate
@@ -972,11 +1003,10 @@ fun UsageCalendar(
                     val day = if (i + j < gridContent.size) gridContent[i + j] else null
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         if (day != null) {
-                            val hasExpense = period.expensesByDay.containsKey(day.dayOfMonth) &&
-                                             (day.month == startDate.month || day.month == endDate.month)
+                            val hasExpense = period.expensesByDay.containsKey(day)
 
                             val intensity = if (hasExpense) {
-                                val amount = period.expensesByDay[day.dayOfMonth] ?: 0.0
+                                val amount = period.expensesByDay[day] ?: 0.0
                                 (amount / maxDayAmount).toFloat().coerceIn(0.2f, 1f)
                             } else 0f
 
@@ -992,14 +1022,14 @@ fun UsageCalendar(
                                     },
                                 shape = CircleShape,
                                 color = when {
-                                    isSelected -> ForestGreen
-                                    hasExpense -> MintGreen.copy(alpha = intensity)
+                                    isSelected -> calAccentColor
+                                    hasExpense -> calSoftColor.copy(alpha = intensity)
                                     else -> Color.Transparent
                                 },
                                 border = if (isSelected && !hasExpense) {
-                                    BorderStroke(2.dp, ForestGreen)
+                                    BorderStroke(2.dp, calAccentColor)
                                 } else null,
-                                contentColor = if (isSelected) Color.White else if (hasExpense) ForestGreen else MaterialTheme.colorScheme.onSurface
+                                contentColor = if (isSelected) Color.White else if (hasExpense) calAccentColor else MaterialTheme.colorScheme.onSurface
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
@@ -1025,6 +1055,10 @@ fun PaymentsVsExpensesSection(
     modifier: Modifier = Modifier
 ) {
     if (periods.isEmpty()) return
+
+    val isDark = isSystemInDarkTheme()
+    val expenseColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val paymentColor = if (isDark) Color(0xFF64B5F6) else Color(0xFF2196F3)
 
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
         Text(
@@ -1052,13 +1086,13 @@ fun PaymentsVsExpensesSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(ForestGreen))
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(expenseColor))
                         Spacer(Modifier.width(4.dp))
                         Text("Gastos", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF2196F3)))
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(paymentColor))
                         Spacer(Modifier.width(4.dp))
                         Text("Pagos", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -1104,9 +1138,10 @@ fun PaymentsVsExpensesChart(
     onIndexSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val expenseColor = ForestGreen
-    val paymentColor = Color(0xFF2196F3)
-    val selectionLineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+    val isDark = isSystemInDarkTheme()
+    val expenseColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val paymentColor = if (isDark) Color(0xFF64B5F6) else Color(0xFF2196F3)
+    val selectionLineColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isDark) 0.35f else 0.2f)
     val maxVal = periods.maxOf { maxOf(it.totalExpenses, it.totalPaymentsAmount) }
         .coerceAtLeast(1.0)
         .toFloat() * 1.1f

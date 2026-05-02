@@ -17,7 +17,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
@@ -37,7 +37,7 @@ data class PeriodStats(
     val expensesCount: Int,
     val paymentsCount: Int,
     val totalPaymentsAmount: Double,
-    val expensesByDay: Map<Int, Double>,
+    val expensesByDay: Map<LocalDate, Double>,
     val expenseDetails: List<ExpenseWithCategories>,
     val categoryBreakdown: List<CategorySpend>,
     val avgTransactionAmount: Double,
@@ -103,7 +103,7 @@ class CardStatsViewModel @Inject constructor(
                         val count = expenses.size
 
                         val byDay = expenses.groupBy {
-                            Instant.ofEpochMilli(it.expense.date).atZone(ZoneId.systemDefault()).toLocalDate().dayOfMonth
+                            Instant.ofEpochMilli(it.expense.date).atZone(ZoneOffset.UTC).toLocalDate()
                         }.mapValues { (_, group) -> group.sumOf { it.expense.amount } }
 
                         val categoryBreakdown = expenses
@@ -125,7 +125,7 @@ class CardStatsViewModel @Inject constructor(
                         val avgTx = if (count > 0) total / count else 0.0
                         val utilization = if (card.creditLimit > 0) (total / card.creditLimit).toFloat() else 0f
 
-                        val startLocalDate = Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault()).toLocalDate()
+                        val startLocalDate = Instant.ofEpochMilli(start).atZone(ZoneOffset.UTC).toLocalDate()
                         val monthName = startLocalDate.month.getDisplayName(TextStyle.SHORT, Locale("es"))
                         val label = "${startLocalDate.year % 100} $monthName"
 
