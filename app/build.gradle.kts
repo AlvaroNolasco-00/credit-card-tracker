@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -28,6 +29,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -45,6 +47,33 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+
+}
+
+afterEvaluate {
+    android.applicationVariants.all { variant ->
+        val buildType = variant.buildType.name
+        val versionName = variant.versionName
+        val assembleTask = tasks.findByName("assemble${variant.name.replaceFirstChar { it.uppercase() }}")
+            ?: tasks.findByName("assemble${variant.name}")
+        assembleTask?.doLast {
+            val outputDir = File(buildDir, "outputs/apk/${buildType}")
+            if (outputDir.exists()) {
+                outputDir.listFiles()
+                    ?.filter { it.name.endsWith(".apk") && !it.name.contains("-${versionName}.apk") }
+                    ?.forEach { file ->
+                        val newName = "app-${buildType}-${versionName}.apk"
+                        val success = file.renameTo(File(outputDir, newName))
+                        if (success) {
+                            println("Renamed: ${file.name} -> $newName")
+                        } else {
+                            println("ERROR: Failed to rename ${file.name} -> $newName")
+                        }
+                    }
+            }
+        }
+        true
     }
 }
 
@@ -97,6 +126,19 @@ dependencies {
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // Google Sign-In + Credential Manager
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // Test
     testImplementation("junit:junit:4.13.2")
