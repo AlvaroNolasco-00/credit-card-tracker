@@ -9,7 +9,56 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 
 ## [Unreleased]
 
+### Added
+- ✅ Firebase Auth UI + Sync básico a Firestore (ADR-062)
+  - Login + Register con email/password y Google Sign-In (Credential Manager API)
+  - Reset de contraseña via `sendPasswordResetEmail`
+  - Sesión anónima automática al primer launch (cero fricción); upgrade voluntario desde Settings
+  - `AuthRepository`: `Flow<AuthState>` via callbackFlow, mapeo tipado de `FirebaseAuthException` a `AuthError` sealed class
+  - `FirestoreSyncRepository`: push/pull de `CreditCard`, `Expense` (+ categoryIds), `Category`
+  - `SyncManager` `@Singleton`: detecta uid change, wipe Room + pull Firestore para nuevos logins
+  - Write-through sync en `CreditCardRepository` (best-effort, offline queued via Firestore SDK)
+  - Pantallas: `AuthLandingScreen`, `LoginScreen`, `RegisterScreen`, `ForgotPasswordScreen` + sus ViewModels
+  - `PasswordTextField` nuevo componente con toggle de visibilidad
+  - `AppTextField` extendido: params `isError`, `errorText`, `visualTransformation`, `leadingIcon`
+  - Settings → sección "Cuenta": CTA vinculación si anónimo, email + logout si autenticado
+  - Permisos `INTERNET` y `ACCESS_NETWORK_STATE` agregados al manifest
+  - Deps: `play-services-auth:21.3.0`, `credentials:1.3.0`, `credentials-play-services-auth:1.3.0`, `googleid:1.1.1`
+  - Firestore offline persistence habilitada (cache ilimitado, writes queued offline)
+  - **Acción manual requerida**: SHA-1 en Firebase Console + Google Sign-In ON + reglas Firestore (ver ADR-062)
+
+- ✅ APK incluye version name en nombre de archivo (ADR-061)
+  - Post-build task renombra `app-debug.apk` → `app-debug-1.0.apk` usando `buildType` + `versionName`
+  - Hook en `afterEvaluate` + `applicationVariants.all` para compatibilidad con AGP 8.3.1 + Kotlin DSL
+  - Manejo de errores explícito: `renameTo` loguea fallo en vez de silenciarlo
+  - Idempotente: no renombra si el APK ya contiene la versión en su nombre
+  - Archivo: `app/build.gradle.kts`
+
+- ✅ Integración de Firebase como Backend — Auth, Firestore y Cloud Storage (ADR-060)
+  - Dependencias agregadas: Firebase BOM `33.7.0`, `firebase-auth-ktx`, `firebase-firestore-ktx`, `firebase-storage-ktx`, `firebase-analytics-ktx`
+  - Plugin `com.google.gms.google-services` en `build.gradle.kts` (raíz) y `app/build.gradle.kts`
+  - Room sigue siendo la fuente de verdad local; Firestore se usará en fase posterior para sync
+  - `app/google-services.json` requerido en build time (no versionado en Git)
+
+- ✅ Notificaciones de inactividad tras 3 y 7 días sin usar la app (ADR-059)
+  - `InactivityReminderScheduler`: programa 2 alarmas exactas (`AlarmManager`) desde el último `onResume()` de `MainActivity`
+  - `InactivityReminderReceiver`: dispara notificación local con copy diferenciado — amigable a 3 días, más llamativa a 7 días
+  - Canal separado `inactivity_channel` con `IMPORTANCE_DEFAULT` para no ser intrusivo
+  - `BootReceiver` reprograma alarmas de inactividad tras reinicio de dispositivo
+  - `SettingsScreen` + `SettingsViewModel`: toggle para activar/desactivar (default: habilitado)
+  - Icono de configuración (⚙️) en header del Dashboard para acceso rápido
+  - Todo el estado vive en SharedPreferences; sin migración de base de datos necesaria
+
 ### Fixed
+- 🐛 **Colores de gráficos en CardStatsScreen invisibles en dark mode (ADR-058)**
+  - Root cause: `ForestGreen = #1E2C22` (verde muy oscuro) sobre `BackgroundDark = #141A16` tiene contraste ~1.6:1, prácticamente invisible. 18+ usos hardcodeados de `ForestGreen` y rangos de hash `80-200` fallaban en dark mode.
+  - Fix: Colores adaptativos via `isSystemInDarkTheme()` — chart line/dots usan `#66BB6A` en dark mode, dot outline pasa de `Color.White` a `#1B241E`, rangos de hash categorías `coerceIn(140, 255)` en dark mode, gradientes con alpha ajustado por tema.
+  - Archivos: `CardStatsScreen.kt`
+- 🐛 **Calendario de estadísticas mostraba fecha un día atrás en zonas horarias negativas (ADR-057)**
+  - Root cause: `DatePicker` y `DateUtils` generan timestamps UTC, pero `CardStatsScreen` y `CardStatsViewModel` convertían a `LocalDate` con `ZoneId.systemDefault()`, causando desfase en offsets negativos (ej. UTC-6).
+  - Fix 1: Todas las conversiones timestamp → `LocalDate` en stats ahora usan `ZoneOffset.UTC`.
+  - Fix 2: `PeriodStats.expensesByDay` cambiado de `Map<Int, Double>` a `Map<LocalDate, Double>` para evitar colisión de días entre meses en períodos que cruzan dos meses.
+  - Archivos: `CardStatsScreen.kt`, `CardStatsViewModel.kt`
 - 🐛 **OCR Dark-Mode Preprocessing — fórmula de brightness corregida (ADR-056)**
   - Root cause: `brightness=80` en dark mode colapsaba toda la imagen a negro (`out = -1.8*200 + 80 = -280 → 0`). ML Kit recibía bitmap vacío, retornaba basura como "6".
   - Fix 1: `brightness = 255 * contrast + lightBrightness` (≈399 para imágenes grandes, ≈317 para pequeñas). Fondo oscuro (v=40) → blanco ✓, texto claro (v=200) → oscuro ✓.

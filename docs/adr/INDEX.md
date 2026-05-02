@@ -74,6 +74,13 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-054](ui/ADR-054-card-stats-enhancements-batch1.md) | Mejoras en Estadísticas de Uso — KPIs, filtro de rango, distribución por categoría y tooltip interactivo | ui, data | Aceptado | 2026-04-26 |
 | [ADR-055](architecture/ADR-055-ocr-receipt-edge-case-fixes.md) | OCR Receipt Edge-Case Fixes — Fechas, tarjetas, normalización de keywords y boost de proximidad | architecture | Aceptado | 2026-04-26 |
 | [ADR-056](architecture/ADR-056-ocr-dark-mode-preprocessing-math-fix.md) | OCR Dark-Mode Preprocessing Math Fix — Brightness formula, median detection, retry fallback | architecture | Aceptado | 2026-04-26 |
+| [ADR-057](ui/ADR-057-card-stats-calendar-utc-fix.md) | Card Stats Calendar Date Bugfix — UTC timezone alignment y Map key fix | ui | Aceptado | 2026-04-26 |
+| [ADR-058](ui/ADR-058-chart-colors-dark-mode-contrast.md) | Contraste de colores en gráficos de CardStatsScreen para Dark Mode | ui | Aceptado | 2026-04-27 |
+| [ADR-059](notifications/ADR-059-inactivity-notifications.md) | Notificaciones de inactividad tras 3 y 7 días sin usar la app | notifications, ui | Aceptado | 2026-04-27 |
+| [ADR-060](architecture/ADR-060-firebase-integration.md) | Integración de Firebase como Backend — Auth, Firestore y Cloud Storage | architecture | Aceptado | 2026-04-27 |
+| [ADR-061](architecture/ADR-061-apk-filename-version-name.md) | APK Filename Includes Version Name — post-build rename task | architecture | Aceptado | 2026-04-30 |
+| [ADR-062](architecture/ADR-062-firebase-auth-ui-and-sync.md) | Firebase Auth UI + Sync Básico — email/Google/anónimo + write-through Firestore | architecture | Aceptado | 2026-05-01 |
+| [ADR-063](architecture/ADR-063-firestore-promotions-pipeline.md) | Pipeline de Promociones Bancarias — Scraper Python + colección Firestore `promotions/` | architecture | Aceptado | 2026-05-02 |
 
 ## Regla de escritura
 

@@ -64,3 +64,5 @@ logs/
 *.sublime-projects
 app/build/
 .opencode/*
+# Added by code-review-graph
+.code-review-graph/
