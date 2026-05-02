@@ -59,6 +59,7 @@ fun DashboardScreen(
     onExpenseClick: (Int) -> Unit,
     onSupportClick: () -> Unit,
     onActivityClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onStatsClick: (Int) -> Unit,
     onRecurringExpensesClick: (Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
@@ -199,6 +200,21 @@ fun DashboardScreen(
                                 Icon(
                                     Icons.Default.Favorite,
                                     contentDescription = "Apoya al desarrollador",
+                                    tint = ForestGreen,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            IconButton(
+                                onClick = onSettingsClick,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(SoftLime.copy(alpha = 0.85f))
+                            ) {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = "Configuración",
                                     tint = ForestGreen,
                                     modifier = Modifier.size(22.dp)
                                 )

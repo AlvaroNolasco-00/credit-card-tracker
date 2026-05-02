@@ -2,7 +2,9 @@ package com.alvaronolasco.creditcardtracker.data.repository
 
 import com.alvaronolasco.creditcardtracker.data.dao.*
 import com.alvaronolasco.creditcardtracker.data.entity.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class CreditCardRepository @Inject constructor(
@@ -14,8 +16,13 @@ class CreditCardRepository @Inject constructor(
     private val incomeDao: IncomeDao,
     private val budgetDao: BudgetDao,
     private val activityLogDao: ActivityLogDao,
-    private val recurringExpenseDao: RecurringExpenseDao
+    private val recurringExpenseDao: RecurringExpenseDao,
+    private val syncRepository: FirestoreSyncRepository,
+    private val applicationScope: CoroutineScope
 ) {
+    private fun syncLaunch(block: suspend () -> Unit) {
+        applicationScope.launch { runCatching { block() } }
+    }
     // Cards
     fun getAllCards(): Flow<List<CreditCard>> = cardDao.getAllCards()
     suspend fun getCardById(id: Int): CreditCard? = cardDao.getCardById(id)
@@ -31,6 +38,7 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "CARD", action = "CREATED", description = "Tarjeta '${card.name}' creada", entityId = cardId, entityType = "CARD")
         )
+        syncLaunch { syncRepository.pushCard(card.copy(id = cardId)) }
         return cardId
     }
     suspend fun updateCard(card: CreditCard) {
@@ -38,12 +46,14 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "CARD", action = "UPDATED", description = "Tarjeta '${card.name}' actualizada", entityId = card.id, entityType = "CARD")
         )
+        syncLaunch { syncRepository.pushCard(card) }
     }
     suspend fun deleteCard(card: CreditCard) {
         cardDao.deleteCard(card)
         activityLogDao.insertLog(
             ActivityLog(category = "CARD", action = "DELETED", description = "Tarjeta '${card.name}' eliminada", entityId = card.id, entityType = "CARD")
         )
+        syncLaunch { syncRepository.deleteCard(card.id) }
     }
 
     suspend fun logPayment(cardId: Int, cardName: String, amount: Double) {
@@ -66,6 +76,7 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "CATEGORY", action = "CREATED", description = "Categoría '${category.name}' creada", entityId = id.toInt(), entityType = "CATEGORY")
         )
+        syncLaunch { syncRepository.pushCategory(category.copy(id = id.toInt())) }
         return id
     }
     suspend fun deleteCategory(category: Category) {
@@ -74,6 +85,7 @@ class CreditCardRepository @Inject constructor(
             activityLogDao.insertLog(
                 ActivityLog(category = "CATEGORY", action = "DELETED", description = "Categoría '${category.name}' eliminada", entityId = category.id, entityType = "CATEGORY")
             )
+            syncLaunch { syncRepository.deleteCategory(category.id) }
         }
     }
 
@@ -93,6 +105,7 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "EXPENSE", action = "CREATED", description = "$label '$desc' por \$${String.format("%.2f", expense.amount)} agregado", entityId = id.toInt(), entityType = "EXPENSE")
         )
+        syncLaunch { syncRepository.pushExpense(expense.copy(id = id.toInt()), emptyList()) }
         return id
     }
     suspend fun updateExpense(expense: Expense) {
@@ -101,6 +114,7 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "EXPENSE", action = "UPDATED", description = "Gasto '$desc' actualizado", entityId = expense.id, entityType = "EXPENSE")
         )
+        syncLaunch { syncRepository.pushExpense(expense, emptyList()) }
     }
     suspend fun deleteExpense(expense: Expense) {
         expenseDao.deleteExpense(expense)
@@ -108,6 +122,7 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "EXPENSE", action = "DELETED", description = "Gasto '$desc' por \$${String.format("%.2f", expense.amount)} eliminado", entityId = expense.id, entityType = "EXPENSE")
         )
+        syncLaunch { syncRepository.deleteExpense(expense.id) }
     }
     suspend fun getExpenseWithCategoriesById(id: Int): ExpenseWithCategories? =
         expenseDao.getExpenseWithCategoriesById(id)
@@ -122,6 +137,10 @@ class CreditCardRepository @Inject constructor(
         activityLogDao.insertLog(
             ActivityLog(category = "EXPENSE", action = "UPDATED", description = "Categorías del gasto #$expenseId actualizadas", entityId = expenseId, entityType = "EXPENSE")
         )
+        syncLaunch {
+            val expense = expenseDao.getExpenseWithCategoriesById(expenseId)?.expense ?: return@syncLaunch
+            syncRepository.pushExpense(expense, categoryIds)
+        }
     }
 
     // Configs

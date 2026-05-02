@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.alvaronolasco.creditcardtracker.data.repository.AuthRepository
 import com.alvaronolasco.creditcardtracker.data.repository.UserPreferencesRepository
+import com.alvaronolasco.creditcardtracker.notifications.InactivityReminderScheduler
+import kotlinx.coroutines.runBlocking
 import com.alvaronolasco.creditcardtracker.ui.navigation.Navigation
 import com.alvaronolasco.creditcardtracker.ui.theme.CreditCardTrackerTheme
 import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
@@ -24,6 +27,12 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository
+
+    @Inject
+    lateinit var inactivityScheduler: InactivityReminderScheduler
+
+    @Inject
+    lateinit var authRepository: AuthRepository
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
@@ -43,6 +52,8 @@ class MainActivity : ComponentActivity() {
             WidgetDeepLink.navigate(it)
         }
 
+        runBlocking { authRepository.ensureSignedIn() }
+
         val startDestination = if (userPreferencesRepository.isOnboardingCompleted()) "dashboard" else "onboarding"
 
         setContent {
@@ -55,6 +66,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        userPreferencesRepository.updateLastAppOpen()
+        inactivityScheduler.schedule()
     }
 
     override fun onNewIntent(intent: Intent) {

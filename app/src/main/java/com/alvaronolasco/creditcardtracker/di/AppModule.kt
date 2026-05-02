@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.alvaronolasco.creditcardtracker.data.AppDatabase
 import com.alvaronolasco.creditcardtracker.data.dao.*
 import com.alvaronolasco.creditcardtracker.data.repository.CreditCardRepository
+import com.alvaronolasco.creditcardtracker.data.repository.FirestoreSyncRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -72,6 +73,12 @@ object AppModule {
         incomeDao: IncomeDao,
         budgetDao: BudgetDao,
         activityLogDao: ActivityLogDao,
-        recurringExpenseDao: RecurringExpenseDao
-    ): CreditCardRepository = CreditCardRepository(cardDao, categoryDao, expenseDao, expenseCategoryDao, configDao, incomeDao, budgetDao, activityLogDao, recurringExpenseDao)
+        recurringExpenseDao: RecurringExpenseDao,
+        syncRepository: FirestoreSyncRepository,
+        scope: CoroutineScope
+    ): CreditCardRepository = CreditCardRepository(
+        cardDao, categoryDao, expenseDao, expenseCategoryDao,
+        configDao, incomeDao, budgetDao, activityLogDao, recurringExpenseDao,
+        syncRepository, scope
+    )
 }

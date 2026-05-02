@@ -61,11 +61,33 @@ class UserPreferencesRepository @Inject constructor(
         prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, true).apply()
     }
 
+    fun isInactivityNotificationsEnabled(): Boolean {
+        return prefs.getBoolean(KEY_INACTIVITY_NOTIFICATIONS, true)
+    }
+
+    fun setInactivityNotificationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_INACTIVITY_NOTIFICATIONS, enabled).apply()
+    }
+
+    fun updateLastAppOpen() {
+        prefs.edit().putLong(KEY_LAST_APP_OPEN, System.currentTimeMillis()).apply()
+    }
+
+    fun getLastAppOpen(): Long {
+        return prefs.getLong(KEY_LAST_APP_OPEN, System.currentTimeMillis())
+    }
+
     companion object {
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_FIRST_LAUNCH_AT = "first_launch_at"
         private const val KEY_SUPPORT_DISMISSED_AT = "support_dismissed_at"
         private const val KEY_BUDGET_PROMPT_DISMISSED_MONTH = "budget_prompt_dismissed_month"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
+        private const val KEY_INACTIVITY_NOTIFICATIONS = "inactivity_notifications_enabled"
+        private const val KEY_LAST_APP_OPEN = "last_app_open"
+        private const val KEY_LAST_SYNCED_UID = "last_synced_uid"
     }
+
+    fun getLastSyncedUid(): String? = prefs.getString(KEY_LAST_SYNCED_UID, null)
+    fun setLastSyncedUid(uid: String?) = prefs.edit().putString(KEY_LAST_SYNCED_UID, uid).apply()
 }

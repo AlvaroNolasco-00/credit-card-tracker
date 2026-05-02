@@ -18,4 +18,10 @@ interface ExpenseCategoryDao {
             insert(ExpenseCategory(expenseId = expenseId, categoryId = catId))
         }
     }
+
+    @Query("SELECT * FROM expense_categories")
+    suspend fun getAllOnce(): List<ExpenseCategory>
+
+    @Query("DELETE FROM expense_categories")
+    suspend fun deleteAll()
 }

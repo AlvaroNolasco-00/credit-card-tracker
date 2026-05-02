@@ -21,6 +21,11 @@ import com.alvaronolasco.creditcardtracker.ui.recurring.RecurringExpensesScreen
 import com.alvaronolasco.creditcardtracker.ui.onboarding.OnboardingScreen
 import com.alvaronolasco.creditcardtracker.ui.activity.ActivityScreen
 import com.alvaronolasco.creditcardtracker.ui.support.SupportScreen
+import com.alvaronolasco.creditcardtracker.ui.auth.AuthLandingScreen
+import com.alvaronolasco.creditcardtracker.ui.auth.ForgotPasswordScreen
+import com.alvaronolasco.creditcardtracker.ui.auth.LoginScreen
+import com.alvaronolasco.creditcardtracker.ui.auth.RegisterScreen
+import com.alvaronolasco.creditcardtracker.ui.settings.SettingsScreen
 import com.alvaronolasco.creditcardtracker.ui.stats.CardStatsScreen
 import com.alvaronolasco.creditcardtracker.widget.WidgetDeepLink
 
@@ -64,6 +69,7 @@ fun Navigation(startDestination: String = "dashboard") {
                 onExpenseClick = { expenseId -> navController.navigate("edit_expense/$expenseId") },
                 onSupportClick = { navController.navigate("support_developer") },
                 onActivityClick = { navController.navigate("activity") },
+                onSettingsClick = { navController.navigate("settings") },
                 onStatsClick = { cardId -> navController.navigate("card_stats/$cardId") },
                 onRecurringExpensesClick = { cardId -> navController.navigate("recurring_expenses/$cardId") }
             )
@@ -87,6 +93,46 @@ fun Navigation(startDestination: String = "dashboard") {
             SupportScreen(
                 onBack = { navController.popBackStack() },
                 onOnboardingClick = { navController.navigate("onboarding") }
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onAuthLandingClick = { navController.navigate("auth_landing") }
+            )
+        }
+
+        composable("auth_landing") {
+            AuthLandingScreen(
+                onLogin = { navController.navigate("login") },
+                onRegister = { navController.navigate("register") },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("login") {
+            LoginScreen(
+                onBack = { navController.popBackStack() },
+                onForgotPassword = { navController.navigate("forgot_password") },
+                onSuccess = {
+                    navController.popBackStack("dashboard", inclusive = false)
+                }
+            )
+        }
+
+        composable("register") {
+            RegisterScreen(
+                onBack = { navController.popBackStack() },
+                onSuccess = {
+                    navController.popBackStack("dashboard", inclusive = false)
+                }
+            )
+        }
+
+        composable("forgot_password") {
+            ForgotPasswordScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 

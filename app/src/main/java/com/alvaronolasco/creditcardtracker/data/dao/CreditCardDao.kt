@@ -25,4 +25,10 @@ interface CreditCardDao {
 
     @Delete
     suspend fun deleteCard(card: CreditCard)
+
+    @Query("SELECT * FROM credit_cards")
+    suspend fun getAllCardsOnce(): List<CreditCard>
+
+    @Query("DELETE FROM credit_cards")
+    suspend fun deleteAll()
 }

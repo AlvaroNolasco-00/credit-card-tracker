@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Credit Card Tracker</string>
     <string name="widget_description">Muestra tus tarjetas de credito con fechas de corte y pago</string>
+    <!-- Replaced by google-services plugin after enabling Google Sign-In in Firebase Console + SHA-1 -->
+    <string name="default_web_client_id" translatable="false">CONFIGURE_GOOGLE_SIGN_IN_IN_FIREBASE_CONSOLE</string>
 </resources>

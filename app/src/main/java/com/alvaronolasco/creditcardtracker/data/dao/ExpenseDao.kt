@@ -55,6 +55,12 @@ interface ExpenseDao {
     @Query("SELECT SUM(amount) FROM expenses WHERE cardId IS NULL AND date BETWEEN :startDate AND :endDate")
     fun getTotalNonCardSpentInPeriod(startDate: Long, endDate: Long): Flow<Double?>
 
+    @Query("SELECT * FROM expenses")
+    suspend fun getAllExpensesOnce(): List<Expense>
+
+    @Query("DELETE FROM expenses")
+    suspend fun deleteAll()
+
     @Query("""
         SELECT c.id, c.name, c.icon, c.isDefault, c.createdAt,
                COALESCE(SUM(CASE WHEN e.msiMonths > 1 THEN e.msiMonthlyAmount ELSE e.amount END), 0) AS totalSpent
