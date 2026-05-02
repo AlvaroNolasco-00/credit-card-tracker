@@ -42,10 +42,13 @@ class NotificationHelper(private val context: Context) {
     companion object {
         const val CHANNEL_ID = "reminder_channel"
         const val CHANNEL_NAME = "Recordatorios de Tarjeta"
+        const val INACTIVITY_CHANNEL_ID = "inactivity_channel"
+        const val INACTIVITY_CHANNEL_NAME = "Recordatorios de Inactividad"
     }
 
     init {
         createNotificationChannel()
+        createInactivityChannel()
     }
 
     private fun createNotificationChannel() {
@@ -56,6 +59,19 @@ class NotificationHelper(private val context: Context) {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notificaciones para cortes y pagos de tarjeta"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createInactivityChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                INACTIVITY_CHANNEL_ID,
+                INACTIVITY_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Notificaciones cuando no usas la app por varios días"
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -152,6 +168,38 @@ class NotificationHelper(private val context: Context) {
         views.setTextViewText(R.id.notif_date, dateText)
 
         return views
+    }
+
+    fun showInactivityNotification(days: Int) {
+        val pendingIntent = buildPendingIntent()
+
+        val isUrgent = days >= 7
+        val title = if (isUrgent) {
+            "No pierdas el hilo de tus finanzas"
+        } else {
+            "¿Algún gasto nuevo?"
+        }
+        val body = if (isUrgent) {
+            "Ya es una semana sin actualizar la app. Un pequeño registro hoy evita sorpresas en tu próximo corte."
+        } else {
+            "Llevas $days días sin registrar movimientos. Toma 30 segundos y mantén el control de tus tarjetas."
+        }
+        val accentColor = if (isUrgent)
+            android.graphics.Color.parseColor("#E53935")
+        else
+            android.graphics.Color.parseColor("#43A047")
+
+        val notification = NotificationCompat.Builder(context, INACTIVITY_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_card)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setColor(accentColor)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(8000 + days, notification)
     }
 
     private fun buildPendingIntent(): PendingIntent {

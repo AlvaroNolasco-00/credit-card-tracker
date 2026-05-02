@@ -16,6 +16,7 @@ class BootReceiver : BroadcastReceiver() {
 
     @Inject lateinit var repository: CreditCardRepository
     @Inject lateinit var scheduler: ReminderScheduler
+    @Inject lateinit var inactivityScheduler: InactivityReminderScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
@@ -27,6 +28,7 @@ class BootReceiver : BroadcastReceiver() {
                     val configs = repository.getConfigsByCard(card.id).first()
                     scheduler.scheduleReminders(card, configs)
                 }
+                inactivityScheduler.schedule()
             } finally {
                 pendingResult.finish()
             }
