@@ -64,6 +64,7 @@ logs/
 *.sublime-projects
 app/build/
 .opencode/*
+.opencode.json
 # Added by code-review-graph
 .code-review-graph/
 
