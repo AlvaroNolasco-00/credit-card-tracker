@@ -15,6 +15,11 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
   - Dep: `androidx.exifinterface:exifinterface:1.3.7`
 
 ### Fixed
+- ✅ Settings → Cuenta: loader infinito cuando sesión anónima falla (ADR-068)
+  - `AccountSection` ahora maneja `AuthState.Loading`, `Unauthenticated` y `Authenticated` en ramas explícitas
+  - Estado `Unauthenticated` muestra icono de error + botón "Reintentar conexión"
+  - `AuthRepository.ensureSignedIn` loggea fallos en Logcat (`AuthRepository: Anonymous sign-in failed`)
+  - Removido `runBlocking { ensureSignedIn() }` de `MainActivity` — sign-in anónimo ahora corre async en `applicationScope`
 - ✅ Botón de estadísticas no visible para tarjetas con múltiples periodos (ADR-066)
   - Reemplaza heurísticas de tiempo (`checkStatsAvailability`) por consulta real `hasExpenses` en Room
   - El botón ahora aparece si la tarjeta tiene al menos un gasto registrado

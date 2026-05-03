@@ -84,6 +84,7 @@ fun SettingsScreen(
                     authState = authState,
                     onLinkAccount = onAuthLandingClick,
                     onSignOut = { showSignOutDialog = true },
+                    onRetry = { viewModel.retrySignIn() },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
@@ -156,6 +157,7 @@ private fun AccountSection(
     authState: AuthState,
     onLinkAccount: () -> Unit,
     onSignOut: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -164,6 +166,37 @@ private fun AccountSection(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         when (authState) {
+            is AuthState.Loading -> {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Cargando sesión...", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            is AuthState.Unauthenticated -> {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.errorContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(22.dp))
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Sin sesión", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text("No se pudo iniciar sesión. Verifica tu conexión.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+                        Text("Reintentar conexión", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
             is AuthState.Authenticated -> {
                 if (authState.isAnonymous) {
                     Row(
@@ -216,13 +249,6 @@ private fun AccountSection(
                             Text("Cerrar sesión", fontWeight = FontWeight.Bold)
                         }
                     }
-                }
-            }
-            else -> {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Text("Cargando sesión...", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

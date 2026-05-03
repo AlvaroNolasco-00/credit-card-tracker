@@ -40,4 +40,10 @@ class SettingsViewModel @Inject constructor(
             authRepository.signOut()
         }
     }
+
+    fun retrySignIn() {
+        viewModelScope.launch {
+            authRepository.ensureSignedIn()
+        }
+    }
 }
