@@ -9,6 +9,27 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 
 ## [Unreleased]
 
+### Changed
+- 🔧 Migración a AndroidX ExifInterface para lectura consistente de orientación de imágenes (ADR-067)
+  - Reemplaza `android.media.ExifInterface` por `androidx.exifinterface.media.ExifInterface`
+  - Dep: `androidx.exifinterface:exifinterface:1.3.7`
+
+### Fixed
+- ✅ Botón de estadísticas no visible para tarjetas con múltiples periodos (ADR-066)
+  - Reemplaza heurísticas de tiempo (`checkStatsAvailability`) por consulta real `hasExpenses` en Room
+  - El botón ahora aparece si la tarjeta tiene al menos un gasto registrado
+  - Reactivo: Flow de Room actualiza automáticamente al agregar/eliminar gastos
+- ✅ Guard de saldo cero en alertas de pago vencido (ADR-065)
+  - `OverduePaymentBanner`: no aparece si `cutPeriodTotal + extraFinancingPayment - partiallyPaidAmount <= 0`
+  - `CardInfoRow` chip "Vencido": mismo guard; cae a "Saldo pagado" cuando saldo = $0 y fecha vencida
+  - Consistente con guard previo en `PayBalanceCard` (ADR-053)
+- ✅ Corrección de contraste en botones, chips y componentes para Dark Mode (ADR-064)
+  - `AppChip`: colores adaptativos para `containerColor`, `labelColor`, `selectedContainerColor` y `trailingIcon`
+  - `AppButton` MintButton: fondo y texto adaptativos según tema
+  - `AppCard`: border visible en dark mode usando `MaterialTheme.colorScheme.outline`
+  - `DashboardScreen`: contenedor de tarjetas, dots, borde "Add card", iconos y texto adaptativos
+  - Todos los componentes usan `isSystemInDarkTheme()` siguiendo el patrón de ADR-058
+
 ### Added
 - ✅ Firebase Auth UI + Sync básico a Firestore (ADR-062)
   - Login + Register con email/password y Google Sign-In (Credential Manager API)

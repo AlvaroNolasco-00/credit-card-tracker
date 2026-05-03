@@ -81,6 +81,10 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-061](architecture/ADR-061-apk-filename-version-name.md) | APK Filename Includes Version Name — post-build rename task | architecture | Aceptado | 2026-04-30 |
 | [ADR-062](architecture/ADR-062-firebase-auth-ui-and-sync.md) | Firebase Auth UI + Sync Básico — email/Google/anónimo + write-through Firestore | architecture | Aceptado | 2026-05-01 |
 | [ADR-063](architecture/ADR-063-firestore-promotions-pipeline.md) | Pipeline de Promociones Bancarias — Scraper Python + colección Firestore `promotions/` | architecture | Aceptado | 2026-05-02 |
+| [ADR-064](ui/ADR-064-dark-mode-button-chip-contrast-fix.md) | Corrección de contraste en botones, chips y componentes para Dark Mode | ui | Aceptado | 2026-05-02 |
+| [ADR-065](ui/ADR-065-overdue-zero-balance-guard.md) | Guard de saldo cero en alertas de pago vencido — OverduePaymentBanner e InfoChip no se muestran si saldo = $0 | ui | Aceptado | 2026-05-02 |
+| [ADR-066](data/ADR-066-stats-button-data-driven.md) | Botón de estadísticas basado en datos reales en lugar de heurísticas de tiempo — query `hasExpenses` en Room | data | Aceptado | 2026-05-02 |
+| [ADR-067](architecture/ADR-067-androidx-exifinterface-migration.md) | Migración a AndroidX ExifInterface para compatibilidad de orientación de imágenes | architecture | Aceptado | 2026-05-02 |
 
 ## Regla de escritura
 
