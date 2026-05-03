@@ -16,24 +16,31 @@ object WidgetColors {
 
     // Textos SOBRE la tarjeta: siempre blancos
     val textOnCard = ColorProvider(Color(0xFFFFFFFF))
-    val textOnCardSecondary = ColorProvider(Color(0xB3FFFFFF))  // White 70%
+    val textOnCardSecondary = ColorProvider(Color(0xB3FFFFFF))
 
     // Overlays semi-transparentes sobre el color de la tarjeta
-    val chipOverlay = Color(0x26FFFFFF)   // White 15%
-    val badgeOverlay = Color(0x33FFFFFF)  // White 20%
+    val chipOverlay = Color(0x26FFFFFF)
+    val badgeOverlay = Color(0x33FFFFFF)
 
-    // Urgencia: rojo suave visible sobre colores oscuros
-    val urgentOnCard = Color(0xFFFFD0D0)  // Rojo claro sobre tarjeta
-    val urgentColor = ColorProvider(Color(0xFFE57373))  // Para texto fuera de tarjeta
+    // Urgencia
+    val urgentOnCard = Color(0xFFFFD0D0)
+    val urgentColor = ColorProvider(Color(0xFFE57373))
+    val urgentBadgeBg = Color(0x40FF6B6B)
+    val safeBadgeBg = Color(0x4081C784)
 
-    // Solid color for widgets
+    // Progress bar semántico
+    val progressSafe = Color(0xFF81C784)
+    val progressAttention = Color(0xFFFFF176)
+    val progressWarning = Color(0xFFFFCC80)
+    val progressDanger = Color(0xFFFF6B6B)
+
+    // Disponible
+    val availableColor = Color(0xFF81C784)
+
     fun cardColor(colorInt: Int) = ColorProvider(Color(colorInt))
 
-    // Return solid color as drawable - widgets now use solid colors
     @DrawableRes
     fun cardGradientDrawable(colorInt: Int): Int {
-        // For now, return a generic solid drawable
-        // The widget should use cardColor() for the actual color
         return when {
             isCloseToColor(colorInt, 0xFFFF4242.toInt()) -> R.drawable.widget_card_red
             isCloseToColor(colorInt, 0xFFFFFF42.toInt()) -> R.drawable.widget_card_yellow

@@ -10,6 +10,17 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 ## [Unreleased]
 
 ### Changed
+- 🎨 Rediseño completo del widget — Jerarquía, montos visibles, colores semánticos (ADR-069)
+  - **SmallLayout (2×2):** Ahora muestra monto total por tarjeta + fecha; removido header "Tarjetas"
+  - **MediumLayout (4×2):** Nueva jerarquía de 4 filas (banco → nombre → monto/límite + badge → progress bar)
+  - **LargeLayout (4×4):** Crédito disponible ("Disp: $X,XXX") visible; botón "+" agrandado a 28×18dp
+  - **ProgressBar semántico:** 4 zonas de color (verde <50%, amarillo 50-70%, amber 70-85%, rojo >85%)
+  - **DateBadge:** Badge con fondo rojo si ≤3 días, verde si >7 días, neutro en el medio
+  - **EmptyState:** Nuevo icono "+" en Box + texto "Sin tarjetas aún · Toca para agregar"
+  - **IncomeSummaryCard:** Progress bar y % con colores semánticos; muestra "Restan: $X,XXX" en Large
+  - **WidgetColorScheme:** +7 nuevos colores semánticos (progressSafe, progressAttention, progressWarning, progressDanger, urgentBadgeBg, safeBadgeBg, availableColor)
+  - File: `app/src/main/java/.../widget/CreditCardWidget.kt`, `WidgetColorScheme.kt`
+
 - 🔧 Migración a AndroidX ExifInterface para lectura consistente de orientación de imágenes (ADR-067)
   - Reemplaza `android.media.ExifInterface` por `androidx.exifinterface.media.ExifInterface`
   - Dep: `androidx.exifinterface:exifinterface:1.3.7`
