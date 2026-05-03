@@ -1200,15 +1200,19 @@ fun InsightsCarousel(
     insights: List<Insight>,
     modifier: Modifier = Modifier
 ) {
+    if (insights.isEmpty()) return
+
     var currentIndex by remember { mutableIntStateOf(0) }
-    
-    // Auto-scroll every 5 seconds
+
     LaunchedEffect(insights) {
+        currentIndex = 0
         while (insights.size > 1) {
             delay(5000)
             currentIndex = (currentIndex + 1) % insights.size
         }
     }
+
+    val safeIndex = currentIndex.coerceIn(0, insights.lastIndex)
 
     Column(modifier = modifier) {
         Text(
@@ -1219,11 +1223,11 @@ fun InsightsCarousel(
         Spacer(Modifier.height(12.dp))
 
         AnimatedContent(
-            targetState = currentIndex,
+            targetState = safeIndex,
             label = "insight",
             transitionSpec = { fadeIn() + slideInHorizontally { it / 2 } togetherWith fadeOut() + slideOutHorizontally { -it / 2 } }
         ) { index ->
-            val insight = insights[index]
+            val insight = insights.getOrNull(index) ?: return@AnimatedContent
             val color = CardStatsInsights.getInsightColor(insight.type)
             val bgColor = color.copy(alpha = 0.08f)
 

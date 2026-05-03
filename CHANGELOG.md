@@ -9,6 +9,12 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 
 ## [Unreleased]
 
+### Fixed
+- 🐛 Crash `IndexOutOfBoundsException` en `InsightsCarousel` al seleccionar período con $0 en gastos (ADR-071)
+  - `currentIndex` no se reseteaba al cambiar lista de insights → acceso stale a `insights[N]` con `size < N+1`
+  - Fix: early return en lista vacía, reset `currentIndex = 0` en `LaunchedEffect(insights)`, `coerceIn` + `getOrNull` como safety net
+  - Elimina crash persistente al reabrir app tras el error
+
 ### Added
 - 🚀 Firestore Sync v2: Root Collections + Incremental Sync (ADR-069)
   - Migra de subcollections `users/{uid}/cards/` a colecciones raíz (`cards/`, `expenses/`, `categories/`, etc.)

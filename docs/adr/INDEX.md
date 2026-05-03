@@ -88,6 +88,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-068](ui/ADR-068-settings-auth-loader-bug-fix.md) | Fix loader infinito en Settings → Cuenta — separar AuthState.Loading / Unauthenticated / Authenticated, remover runBlocking de MainActivity | ui | Aceptado | 2026-05-02 |
 | [ADR-069](architecture/ADR-069-firestore-sync-v2.md) | Firestore Sync v2 — Root Collections + Incremental Sync + 8 entidades | architecture | data | Aceptado | 2026-05-02 |
 | [ADR-070](widget/ADR-070-widget-full-redesign.md) | Full Redesign del Widget — Jerarquía, Semántica y Usabilidad | widget | Aceptado | 2026-05-02 |
+| [ADR-071](ui/ADR-071-insights-carousel-stale-index-crash.md) | Fix crash IndexOutOfBoundsException en InsightsCarousel — stale index al cambiar período con $0 | ui | Aceptado | 2026-05-03 |
 
 ## Regla de escritura
 
