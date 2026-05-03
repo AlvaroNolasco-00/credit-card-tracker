@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -224,11 +225,13 @@ fun DashboardScreen(
 
                     // Card pager inside mint background container
                     item {
+                        val isDark = isSystemInDarkTheme()
+                        val cardContainerBg = if (isDark) Color(0xFF1B241E) else MintGreen
                         Box(
                             modifier = Modifier
                                 .padding(horizontal = 16.dp)
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(MintGreen)
+                                .background(cardContainerBg)
                                 .padding(vertical = 20.dp)
                         ) {
                             HorizontalPager(
@@ -253,6 +256,8 @@ fun DashboardScreen(
 
                     // Page indicators
                     item {
+                        val isDark = isSystemInDarkTheme()
+                        val dotColor = if (isDark) Color(0xFF66BB6A) else ForestGreen
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -274,7 +279,7 @@ fun DashboardScreen(
                                         .width(width)
                                         .clip(CircleShape)
                                         .background(
-                                            if (isSelected) ForestGreen
+                                            if (isSelected) dotColor
                                             else Color.Gray.copy(alpha = 0.3f)
                                         )
                                 )
@@ -283,7 +288,8 @@ fun DashboardScreen(
                     }
 
                     // Overdue payment alert banner
-                    if (selectedCard != null && selectedCard.isPaymentOverdue) {
+                    if (selectedCard != null && selectedCard.isPaymentOverdue &&
+                        (selectedCard.cutPeriodTotal + selectedCard.extraFinancingPayment - selectedCard.partiallyPaidAmount) > 0.0) {
                         item {
                             OverduePaymentBanner(
                                 cardName = selectedCard.card.name,
@@ -638,6 +644,12 @@ fun CreditCardPagerItem(
 fun AddCardTile(
     onClick: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val addCardAccent = if (isDark) Color(0xFF66BB6A) else ForestGreen
+    val addCardBg = if (isDark) Color(0xFF2A3F30) else MintGreen.copy(alpha = 0.7f)
+    val addCardBorderStart = if (isDark) Color(0xFF66BB6A).copy(alpha = 0.5f) else ForestGreen.copy(alpha = 0.5f)
+    val addCardBorderEnd = if (isDark) Color(0xFF2A3F30) else MintGreen
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -647,7 +659,7 @@ fun AddCardTile(
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(
             width = 2.dp,
-            brush = Brush.linearGradient(listOf(ForestGreen.copy(alpha = 0.5f), MintGreen)),
+            brush = Brush.linearGradient(listOf(addCardBorderStart, addCardBorderEnd)),
         ),
         shadowElevation = 0.dp
     ) {
@@ -660,13 +672,13 @@ fun AddCardTile(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(MintGreen.copy(alpha = 0.7f)),
+                    .background(addCardBg),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = null,
-                    tint = ForestGreen,
+                    tint = addCardAccent,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -675,7 +687,7 @@ fun AddCardTile(
                 "Agregar otra tarjeta",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = ForestGreen
+                color = addCardAccent
             )
         }
     }
@@ -704,7 +716,8 @@ fun CardInfoRow(
             showTrailing = isCutOffSoon
         )
 
-        if (state.isPaymentOverdue) {
+        val overdueRemaining = state.cutPeriodTotal + state.extraFinancingPayment - state.partiallyPaidAmount
+        if (state.isPaymentOverdue && overdueRemaining > 0.0) {
             InfoChip(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.AttachMoney,
@@ -716,7 +729,7 @@ fun CardInfoRow(
                 showTrailing = true,
                 containerColor = Color(0xFFE53935).copy(alpha = 0.08f)
             )
-        } else if (state.isPaidThisCycle) {
+        } else if (state.isPaidThisCycle || (state.isPaymentOverdue && overdueRemaining <= 0.0)) {
             InfoChip(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.AttachMoney,

@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -10,7 +11,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.alvaronolasco.creditcardtracker.ui.theme.*
 
 @Composable
 fun AppButton(
@@ -55,14 +55,18 @@ fun MintButton(
     enabled: Boolean = true,
     icon: ImageVector? = null
 ) {
+    val isDark = isSystemInDarkTheme()
+    val mintContainer = if (isDark) Color(0xFF2A3F30) else Color(0xFFD8ECE4)
+    val mintContent = if (isDark) Color(0xFF66BB6A) else Color(0xFF1E2C22)
+
     AppButton(
         text = text,
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
         icon = icon,
-        containerColor = MintGreen,
-        contentColor = ForestGreen
+        containerColor = mintContainer,
+        contentColor = mintContent
     )
 }
 

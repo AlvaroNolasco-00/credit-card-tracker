@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,7 +16,7 @@ fun AppCard(
     onClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     elevation: Dp = 0.dp,
-    border: BorderStroke? = BorderStroke(1.dp, Color.Black.copy(alpha = 0.05f)),
+    border: BorderStroke? = BorderStroke(1.dp, if (isSystemInDarkTheme()) MaterialTheme.colorScheme.outline.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)),
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {
