@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.glance.unit.ColorProvider
 import com.alvaronolasco.creditcardtracker.R
 
+@Suppress("RestrictedApi")
 object WidgetColors {
     // Colores que cambian con dark mode - usan color resources (values / values-night)
     val widgetBackground = ColorProvider(R.color.widget_background)

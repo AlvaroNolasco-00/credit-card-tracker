@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.alvaronolasco.creditcardtracker.MainActivity
@@ -52,29 +51,25 @@ class NotificationHelper(private val context: Context) {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Notificaciones para cortes y pagos de tarjeta"
-            }
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notificaciones para cortes y pagos de tarjeta"
         }
+        notificationManager.createNotificationChannel(channel)
     }
 
     private fun createInactivityChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                INACTIVITY_CHANNEL_ID,
-                INACTIVITY_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Notificaciones cuando no usas la app por varios días"
-            }
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            INACTIVITY_CHANNEL_ID,
+            INACTIVITY_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Notificaciones cuando no usas la app por varios días"
         }
+        notificationManager.createNotificationChannel(channel)
     }
 
     fun showNotification(data: CardNotificationData) {

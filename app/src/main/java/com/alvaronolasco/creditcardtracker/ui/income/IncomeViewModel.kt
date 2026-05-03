@@ -24,7 +24,7 @@ data class IncomeUiState(
 @HiltViewModel
 class IncomeViewModel @Inject constructor(
     private val repository: CreditCardRepository,
-    @ApplicationContext private val context: Context
+    @ApplicationContext @Suppress("StaticFieldLeak") private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(IncomeUiState())

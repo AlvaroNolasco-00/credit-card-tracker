@@ -438,7 +438,7 @@ class CreditCardWidget : GlanceAppWidget() {
                     Box(
                         modifier = GlanceModifier
                             .cornerRadius(8.dp)
-                            .background(ColorProvider(WidgetColors.badgeOverlay))
+                                    .background(ColorProvider(WidgetColors.badgeOverlay))
                             .padding(horizontal = 7.dp, vertical = 3.dp)
                     ) {
                         Text(

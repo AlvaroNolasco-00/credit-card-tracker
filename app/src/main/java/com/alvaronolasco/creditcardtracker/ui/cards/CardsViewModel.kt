@@ -28,7 +28,7 @@ data class CardsUiState(
 class CardsViewModel @Inject constructor(
     private val repository: CreditCardRepository,
     private val scheduler: ReminderScheduler,
-    @ApplicationContext private val context: Context
+    @ApplicationContext @Suppress("StaticFieldLeak") private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CardsUiState())

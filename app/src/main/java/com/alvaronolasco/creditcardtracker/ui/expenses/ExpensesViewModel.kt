@@ -39,7 +39,7 @@ data class ExpensesUiState(
 @HiltViewModel
 class ExpensesViewModel @Inject constructor(
     private val repository: CreditCardRepository,
-    @ApplicationContext private val context: Context
+    @ApplicationContext @Suppress("StaticFieldLeak") private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExpensesUiState())
