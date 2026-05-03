@@ -1,6 +1,7 @@
 package com.alvaronolasco.creditcardtracker.data.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
@@ -67,10 +68,12 @@ class AuthRepository @Inject constructor(
     fun currentUser() = auth.currentUser
     fun isAnonymous(): Boolean = auth.currentUser?.isAnonymous ?: true
 
-    suspend fun ensureSignedIn() {
-        if (auth.currentUser == null) {
-            runCatching { auth.signInAnonymously().await() }
-        }
+    suspend fun ensureSignedIn(): Result<Unit> {
+        if (auth.currentUser != null) return Result.success(Unit)
+        return runCatching {
+            auth.signInAnonymously().await()
+            Unit
+        }.onFailure { Log.e("AuthRepository", "Anonymous sign-in failed", it) }
     }
 
     suspend fun signUpWithEmail(email: String, password: String): Result<Unit> = runCatching {
