@@ -15,6 +15,9 @@ interface CategoryDao {
     @Delete
     suspend fun deleteCategory(category: Category)
 
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun getCategoryById(id: Int): Category?
+
     @Query("SELECT * FROM categories WHERE isDefault = 1")
     suspend fun getDefaultCategories(): List<Category>
 

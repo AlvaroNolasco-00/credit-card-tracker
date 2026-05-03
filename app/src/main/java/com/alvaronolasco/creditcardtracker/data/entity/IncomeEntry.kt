@@ -13,5 +13,6 @@ data class IncomeEntry(
     val type: String, // "BASE", "COMMISSION", "BONUS", "OTHER"
     val monthYear: String? = null, // "YYYY-MM" for non-recurring
     val isActive: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )

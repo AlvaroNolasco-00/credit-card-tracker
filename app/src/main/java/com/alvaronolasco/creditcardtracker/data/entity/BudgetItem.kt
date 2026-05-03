@@ -25,5 +25,6 @@ data class BudgetItem(
     val categoryId: Int,
     val monthYear: String, // "YYYY-MM"
     val limitAmount: Double,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )

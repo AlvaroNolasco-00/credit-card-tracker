@@ -86,8 +86,16 @@ class UserPreferencesRepository @Inject constructor(
         private const val KEY_INACTIVITY_NOTIFICATIONS = "inactivity_notifications_enabled"
         private const val KEY_LAST_APP_OPEN = "last_app_open"
         private const val KEY_LAST_SYNCED_UID = "last_synced_uid"
+        private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
+        private const val KEY_OLD_SUB_MIGRATED = "old_subcollection_migrated"
     }
 
     fun getLastSyncedUid(): String? = prefs.getString(KEY_LAST_SYNCED_UID, null)
     fun setLastSyncedUid(uid: String?) = prefs.edit().putString(KEY_LAST_SYNCED_UID, uid).apply()
+
+    fun getLastSyncTimestamp(): Long = prefs.getLong(KEY_LAST_SYNC_TIMESTAMP, 0L)
+    fun setLastSyncTimestamp(ts: Long) = prefs.edit().putLong(KEY_LAST_SYNC_TIMESTAMP, ts).apply()
+
+    fun getOldSubcollectionMigrated(): Boolean = prefs.getBoolean(KEY_OLD_SUB_MIGRATED, false)
+    fun setOldSubcollectionMigrated(v: Boolean) = prefs.edit().putBoolean(KEY_OLD_SUB_MIGRATED, v).apply()
 }

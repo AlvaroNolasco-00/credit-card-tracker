@@ -29,5 +29,6 @@ data class Expense(
     val msiMonths: Int = 1,
     val msiMonthlyAmount: Double = 0.0,
     val msiEndDate: Long = 0L,
-    val paymentMethod: String = PaymentMethod.CREDIT_CARD.name
+    val paymentMethod: String = PaymentMethod.CREDIT_CARD.name,
+    val updatedAt: Long = System.currentTimeMillis()
 )

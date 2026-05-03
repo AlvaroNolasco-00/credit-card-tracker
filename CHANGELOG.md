@@ -9,6 +9,15 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 
 ## [Unreleased]
 
+### Added
+- 🚀 Firestore Sync v2: Root Collections + Incremental Sync (ADR-069)
+  - Migra de subcollections `users/{uid}/cards/` a colecciones raíz (`cards/`, `expenses/`, `categories/`, etc.)
+  - Añade `updatedAt` a 8 entidades Room para resolución de conflictos (last-writer-wins)
+  - Nueva tabla `sync_queue` con cola de reintentos (máx 5 intentos)
+  - SyncManager v2 con algoritmo incremental: push queue → pull incremental por updatedAt
+  - Nuevas entidades sincronizadas: BudgetItem, IncomeEntry, IncomeProfile, RecurringExpense, NotificationConfig
+  - Sync event-based (no periódico): auth, CRUD, app foreground (debounced)
+
 ### Changed
 - 🔧 Migración a AndroidX ExifInterface para lectura consistente de orientación de imágenes (ADR-067)
   - Reemplaza `android.media.ExifInterface` por `androidx.exifinterface.media.ExifInterface`

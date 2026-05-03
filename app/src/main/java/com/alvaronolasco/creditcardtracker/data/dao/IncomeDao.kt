@@ -10,6 +10,12 @@ interface IncomeDao {
     @Query("SELECT * FROM income_profiles WHERE id = 1")
     fun getProfile(): Flow<IncomeProfile?>
 
+    @Query("SELECT * FROM income_profiles WHERE id = 1")
+    suspend fun getProfileOnce(): IncomeProfile?
+
+    @Query("SELECT * FROM income_entries WHERE id = :id")
+    suspend fun getIncomeEntryById(id: Int): IncomeEntry?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertProfile(profile: IncomeProfile)
 

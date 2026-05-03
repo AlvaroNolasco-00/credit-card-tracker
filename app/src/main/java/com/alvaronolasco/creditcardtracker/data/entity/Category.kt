@@ -9,5 +9,6 @@ data class Category(
     val name: String,
     val icon: String, // Icon identifier or name
     val isDefault: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )

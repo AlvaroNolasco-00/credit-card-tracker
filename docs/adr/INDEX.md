@@ -86,6 +86,7 @@ Cada ADR vive en su carpeta de categoría y se lista aquí con su estado actual.
 | [ADR-066](data/ADR-066-stats-button-data-driven.md) | Botón de estadísticas basado en datos reales en lugar de heurísticas de tiempo — query `hasExpenses` en Room | data | Aceptado | 2026-05-02 |
 | [ADR-067](architecture/ADR-067-androidx-exifinterface-migration.md) | Migración a AndroidX ExifInterface para compatibilidad de orientación de imágenes | architecture | Aceptado | 2026-05-02 |
 | [ADR-068](ui/ADR-068-settings-auth-loader-bug-fix.md) | Fix loader infinito en Settings → Cuenta — separar AuthState.Loading / Unauthenticated / Authenticated, remover runBlocking de MainActivity | ui | Aceptado | 2026-05-02 |
+| [ADR-069](architecture/ADR-069-firestore-sync-v2.md) | Firestore Sync v2 — Root Collections + Incremental Sync + 8 entidades | architecture \| data | Aceptado | 2026-05-02 |
 
 ## Regla de escritura
 

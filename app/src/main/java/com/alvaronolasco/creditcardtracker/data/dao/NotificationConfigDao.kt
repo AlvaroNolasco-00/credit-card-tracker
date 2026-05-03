@@ -9,6 +9,9 @@ interface NotificationConfigDao {
     @Query("SELECT * FROM notification_configs WHERE cardId = :cardId")
     fun getConfigsByCard(cardId: Int): Flow<List<NotificationConfig>>
 
+    @Query("SELECT * FROM notification_configs WHERE id = :id")
+    suspend fun getConfigById(id: Int): NotificationConfig?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertConfigs(configs: List<NotificationConfig>)
 
