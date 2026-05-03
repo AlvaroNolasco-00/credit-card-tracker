@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
         RecurringExpenseCategory::class,
         SyncQueueItem::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -41,6 +41,25 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun syncQueueDao(): SyncQueueDao
 
     companion object {
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS sync_queue")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sync_queue (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        entityType TEXT NOT NULL,
+                        entityId INTEGER NOT NULL,
+                        action TEXT NOT NULL,
+                        attemptCount INTEGER NOT NULL,
+                        lastAttempt INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                database.execSQL("DROP INDEX IF EXISTS idx_sync_queue_entity")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_sync_queue_entityType_entityId ON sync_queue(entityType, entityId)")
+            }
+        }
+
         val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE credit_cards ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
@@ -52,18 +71,19 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE recurring_expenses ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
                 database.execSQL("ALTER TABLE notification_configs ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
 
+                database.execSQL("DROP TABLE IF EXISTS sync_queue")
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS sync_queue (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                         entityType TEXT NOT NULL,
                         entityId INTEGER NOT NULL,
                         action TEXT NOT NULL,
-                        attemptCount INTEGER NOT NULL DEFAULT 0,
-                        lastAttempt INTEGER NOT NULL DEFAULT 0,
+                        attemptCount INTEGER NOT NULL,
+                        lastAttempt INTEGER NOT NULL,
                         createdAt INTEGER NOT NULL
                     )
                 """)
-                database.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entityType, entityId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_sync_queue_entityType_entityId ON sync_queue(entityType, entityId)")
             }
         }
 
@@ -268,7 +288,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                     MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-                    MIGRATION_15_16
+                    MIGRATION_15_16, MIGRATION_16_17
                 )
                 .fallbackToDestructiveMigration()
                 .build()
