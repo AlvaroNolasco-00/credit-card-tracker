@@ -8,5 +8,6 @@ data class IncomeProfile(
     @PrimaryKey val id: Int = 1, // Singleton
     val employmentType: String, // "EMPLOYED", "FREELANCER"
     val incomeMode: String, // "RECURRING", "MONTHLY_PROMPT"
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )

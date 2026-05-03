@@ -24,5 +24,6 @@ data class RecurringExpense(
     val description: String,
     val dayOfMonth: Int? = null,
     val isActive: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )

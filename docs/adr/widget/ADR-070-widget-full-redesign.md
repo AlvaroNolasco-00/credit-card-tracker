@@ -1,4 +1,4 @@
-# ADR-069: Full Redesign del Widget — Jerarquía, Semántica y Usabilidad
+# ADR-070: Full Redesign del Widget — Jerarquía, Semántica y Usabilidad
 
 **Fecha:** 2026-05-02
 **Estado:** Aceptado

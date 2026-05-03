@@ -22,9 +22,10 @@ import kotlinx.coroutines.launch
         BudgetItem::class,
         ActivityLog::class,
         RecurringExpense::class,
-        RecurringExpenseCategory::class
+        RecurringExpenseCategory::class,
+        SyncQueueItem::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,8 +38,35 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun activityLogDao(): ActivityLogDao
     abstract fun recurringExpenseDao(): RecurringExpenseDao
+    abstract fun syncQueueDao(): SyncQueueDao
 
     companion object {
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE credit_cards ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE expenses ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE categories ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE budget_items ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE income_entries ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE income_profiles ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE recurring_expenses ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE notification_configs ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sync_queue (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        entityType TEXT NOT NULL,
+                        entityId INTEGER NOT NULL,
+                        action TEXT NOT NULL,
+                        attemptCount INTEGER NOT NULL DEFAULT 0,
+                        lastAttempt INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entityType, entityId)")
+            }
+        }
+
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("""
@@ -236,7 +264,12 @@ abstract class AppDatabase : RoomDatabase() {
                         }
                     }
                 })
-                .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                .addMigrations(
+                    MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+                    MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+                    MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
+                    MIGRATION_15_16
+                )
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

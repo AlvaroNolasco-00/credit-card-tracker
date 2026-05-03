@@ -9,8 +9,17 @@ Basado en [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning
 
 ## [Unreleased]
 
+### Added
+- 🚀 Firestore Sync v2: Root Collections + Incremental Sync (ADR-069)
+  - Migra de subcollections `users/{uid}/cards/` a colecciones raíz (`cards/`, `expenses/`, `categories/`, etc.)
+  - Añade `updatedAt` a 8 entidades Room para resolución de conflictos (last-writer-wins)
+  - Nueva tabla `sync_queue` con cola de reintentos (máx 5 intentos)
+  - SyncManager v2 con algoritmo incremental: push queue → pull incremental por updatedAt
+  - Nuevas entidades sincronizadas: BudgetItem, IncomeEntry, IncomeProfile, RecurringExpense, NotificationConfig
+  - Sync event-based (no periódico): auth, CRUD, app foreground (debounced)
+
 ### Changed
-- 🎨 Rediseño completo del widget — Jerarquía, montos visibles, colores semánticos (ADR-069)
+- 🎨 Rediseño completo del widget — Jerarquía, montos visibles, colores semánticos (ADR-070)
   - **SmallLayout (2×2):** Ahora muestra monto total por tarjeta + fecha; removido header "Tarjetas"
   - **MediumLayout (4×2):** Nueva jerarquía de 4 filas (banco → nombre → monto/límite + badge → progress bar)
   - **LargeLayout (4×4):** Crédito disponible ("Disp: $X,XXX") visible; botón "+" agrandado a 28×18dp
