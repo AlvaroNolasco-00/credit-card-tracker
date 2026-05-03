@@ -155,7 +155,8 @@ class DashboardViewModel @Inject constructor(
                     val isPaid = card.lastPaymentDate > prevEnd
                     val effectivePartial = if (!isPaid && card.partialPaymentCycleEnd == prevEnd) card.partialPaymentAmount else 0.0
                     val prevFlow = repository.getTotalSpentInPeriod(card.id, prevStart, prevEnd)
-                    combine(currentFlow, prevFlow) { current, prev ->
+                    val hasExpensesFlow = repository.hasExpenses(card.id)
+                    combine(currentFlow, prevFlow, hasExpensesFlow) { current, prev, hasExpenses ->
                         val overduedays = if (!isPaid) DateUtils.getDaysOverduePayment(card.cutOffDay, card.paymentDueDay) else 0
                         CardDashboardState(
                             card = card,
@@ -168,7 +169,7 @@ class DashboardViewModel @Inject constructor(
                             daysUntilCutOff = DateUtils.getDaysUntil(card.cutOffDay),
                             daysUntilPayment = DateUtils.getDaysUntil(card.paymentDueDay),
                             cutOffDateLabel = computeCutOffDateLabel(card.cutOffDay),
-                            hasStatsAvailable = checkStatsAvailability(card),
+                            hasStatsAvailable = hasExpenses,
                             isPaymentOverdue = overduedays > 0,
                             daysOverdue = overduedays,
                             recurringExpensesTotal = 0.0
@@ -305,13 +306,4 @@ class DashboardViewModel @Inject constructor(
         return "${cutDate.dayOfMonth} de $monthName"
     }
 
-    private fun checkStatsAvailability(card: CreditCard): Boolean {
-        val thirtyDaysMillis = 30L * 24 * 60 * 60 * 1000
-        val isOlderThanAMonth = (System.currentTimeMillis() - card.createdAt) >= thirtyDaysMillis
-        
-        // Also if we have passed a cut-off (meaning we have at least one closed period)
-        val cutOffPassed = DateUtils.hasCutOffPassedThisMonth(card.cutOffDay)
-        
-        return isOlderThanAMonth || cutOffPassed
-    }
 }

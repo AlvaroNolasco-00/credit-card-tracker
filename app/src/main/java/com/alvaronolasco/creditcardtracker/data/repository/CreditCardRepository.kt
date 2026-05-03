@@ -98,6 +98,8 @@ class CreditCardRepository @Inject constructor(
         expenseDao.getExpensesWithCategoriesByCardInPeriod(cardId, start, end)
     fun getTotalSpentInPeriod(cardId: Int, start: Long, end: Long): Flow<Double?> =
         expenseDao.getTotalSpentInPeriod(cardId, start, end)
+    fun hasExpenses(cardId: Int): Flow<Boolean> =
+        expenseDao.hasExpenses(cardId)
     suspend fun insertExpense(expense: Expense): Long {
         val id = expenseDao.insertExpense(expense)
         val desc = if (expense.description.isNotBlank()) expense.description else "Sin descripción"

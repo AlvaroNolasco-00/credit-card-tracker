@@ -31,6 +31,9 @@ interface ExpenseDao {
     """)
     fun getTotalSpentInPeriod(cardId: Int, startDate: Long, endDate: Long): Flow<Double?>
 
+    @Query("SELECT COUNT(*) > 0 FROM expenses WHERE cardId = :cardId")
+    fun hasExpenses(cardId: Int): Flow<Boolean>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpense(expense: Expense): Long
 
